@@ -18,6 +18,9 @@ Rails.application.routes.draw do
 
       resources :rankings, only: [:index, :create, :destroy] do
         resources :songs, only: [:index, :create, :destroy]
+        resources :matchups, only: [:create] do
+          collection { get :next }
+        end
       end
     end
   end
