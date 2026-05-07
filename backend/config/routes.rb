@@ -21,6 +21,7 @@ Rails.application.routes.draw do
         resources :matchups, only: [:create] do
           collection { get :next }
         end
+        resource :export, only: [:show]
       end
     end
   end
