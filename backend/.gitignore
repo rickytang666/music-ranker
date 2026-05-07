@@ -1,0 +1,13 @@
+# credentials
+config/master.key
+config/credentials/*.key
+.env*
+
+# runtime
+log/*.log
+tmp/
+storage/
+*.sqlite3
+
+# kamal
+.kamal/secrets
