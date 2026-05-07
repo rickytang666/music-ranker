@@ -358,6 +358,7 @@ DEPENDENCIES
   bundler-audit
   debug
   dotenv-rails
+  jwt
   omniauth-rails_csrf_protection
   omniauth-spotify
   pg (~> 1.1)

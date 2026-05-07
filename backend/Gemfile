@@ -29,6 +29,7 @@ gem "rack-cors"
 
 gem "omniauth-spotify"
 gem "omniauth-rails_csrf_protection"
+gem "jwt"
 
 group :development do
   gem "dotenv-rails"
