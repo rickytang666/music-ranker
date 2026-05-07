@@ -1,4 +1,6 @@
 class User < ApplicationRecord
+  has_many :rankings, dependent: :destroy
+
   validates :spotify_id, presence: true, uniqueness: true
 
   def token_expired?
