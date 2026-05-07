@@ -10,6 +10,12 @@ Rails.application.routes.draw do
       get "auth/me", to: "auth#me"
       delete "auth/logout", to: "auth#logout"
 
+      scope "/spotify" do
+        get "search/artists",     to: "spotify#search_artists"
+        get "search/tracks",      to: "spotify#search_tracks"
+        get "artists/:id/tracks", to: "spotify#artist_tracks"
+      end
+
       resources :rankings, only: [:index, :create, :destroy] do
         resources :songs, only: [:index, :create, :destroy]
       end
