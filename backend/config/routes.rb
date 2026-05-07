@@ -10,7 +10,9 @@ Rails.application.routes.draw do
       get "auth/me", to: "auth#me"
       delete "auth/logout", to: "auth#logout"
 
-      resources :rankings, only: [:index, :create, :destroy]
+      resources :rankings, only: [:index, :create, :destroy] do
+        resources :songs, only: [:index, :create, :destroy]
+      end
     end
   end
 end
