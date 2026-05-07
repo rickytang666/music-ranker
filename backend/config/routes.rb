@@ -9,6 +9,8 @@ Rails.application.routes.draw do
     namespace :v1 do
       get "auth/me", to: "auth#me"
       delete "auth/logout", to: "auth#logout"
+
+      resources :rankings, only: [:index, :create, :destroy]
     end
   end
 end
