@@ -1,7 +1,6 @@
 module Api
   module V1
-    class AuthController < ApplicationController
-      before_action :authenticate!
+    class AuthController < BaseController
 
       def me
         render json: {
