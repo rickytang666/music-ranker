@@ -65,11 +65,11 @@ class MatchupSelectorService
   def violates_constraint?(song_a_rs, opponent_rs)
     id = song_a_rs.song_id
     if @overrated_ids.include?(id)
-      # overrated: match against higher-ranked so it can lose and drop
-      opponent_rs.elo_score < song_a_rs.elo_score
-    elsif @underrated_ids.include?(id)
-      # underrated: match against lower-ranked so it can win and rise
+      # overrated: match against lower-ranked — losing to a weaker song is unexpected, causing a bigger ELO drop
       opponent_rs.elo_score > song_a_rs.elo_score
+    elsif @underrated_ids.include?(id)
+      # underrated: match against higher-ranked — beating a stronger song is unexpected, causing a bigger ELO gain
+      opponent_rs.elo_score < song_a_rs.elo_score
     else
       false
     end

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { IconPlus, IconLoader2, IconArrowsShuffle, IconShare, IconCheck, IconRotate } from '@tabler/icons-svelte';
 	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import { api } from '$lib/api';
@@ -65,8 +65,10 @@
 
 	$effect(() => {
 		if (rankingId) {
-			loadNext();
-			loadSongs();
+			untrack(() => {
+				loadNext();
+				loadSongs();
+			});
 		}
 	});
 
