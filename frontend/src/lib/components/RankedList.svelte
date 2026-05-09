@@ -11,7 +11,7 @@
 		matchup_count: number;
 	}
 
-	let { songs }: { songs: RankedSong[] } = $props();
+	let { songs, onRemove }: { songs: RankedSong[]; onRemove?: (id: number) => void } = $props();
 
 	interface MenuState {
 		songId: number;
@@ -71,6 +71,10 @@
 		{#if flagStore.get(menu.songId)}
 			<div class="menu-divider"></div>
 			<button class="menu-item muted" onclick={clearFlag}>Clear flag</button>
+		{/if}
+		{#if onRemove}
+			<div class="menu-divider"></div>
+			<button class="menu-item danger" onclick={() => { onRemove!(menu!.songId); menu = null; }}>Remove</button>
 		{/if}
 	</div>
 {/if}
@@ -134,6 +138,8 @@
 	.menu-item:hover { background: rgba(26, 26, 26, 0.06); }
 	.menu-item.active { font-weight: 600; }
 	.menu-item.muted { color: var(--muted); font-size: 13px; }
+	.menu-item.danger { color: #c0392b; }
+	.menu-item.danger:hover { background: rgba(192,57,43,0.07); }
 
 	.menu-divider {
 		height: 1px;

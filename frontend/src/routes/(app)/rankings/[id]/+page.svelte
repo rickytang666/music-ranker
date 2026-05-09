@@ -116,6 +116,16 @@
 		await Promise.all([loadNext(), loadSongs()]);
 	}
 
+	async function removeSong(songId: number) {
+		try {
+			await api.delete(`/api/v1/rankings/${rankingId}/songs/${songId}`);
+			rankedSongs = rankedSongs.filter((s) => s.id !== songId);
+			loadNext();
+		} catch {
+			// non-critical
+		}
+	}
+
 	function onKeydown(e: KeyboardEvent) {
 		if (!matchup || matchupPhase !== 'ready') return;
 		if (e.key === 'ArrowLeft') pick(matchup.song_a.id);
@@ -230,7 +240,7 @@
 			<p>add songs to start ranking</p>
 		</div>
 	{:else}
-		<RankedList songs={rankedSongs} />
+		<RankedList songs={rankedSongs} onRemove={removeSong} />
 	{/if}
 </aside>
 
@@ -355,7 +365,7 @@
 	}
 
 	.right-panel {
-		width: 320px;
+		width: 400px;
 		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
