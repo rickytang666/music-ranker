@@ -1,27 +1,141 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { IconPlus } from '@tabler/icons-svelte';
+	import { onMount } from 'svelte';
+	import { IconPlus, IconLoader2, IconArrowsShuffle } from '@tabler/icons-svelte';
+	import { api } from '$lib/api';
 	import { rankings } from '$lib/stores/rankings.svelte';
+	import SongCard from '$lib/components/SongCard.svelte';
 	import SongImportModal from '$lib/components/SongImportModal.svelte';
+
+	interface Song {
+		id: number;
+		title: string;
+		artist_name: string;
+		album_name: string | null;
+		album_art_url: string | null;
+	}
+
+	interface Matchup {
+		song_a: Song;
+		song_b: Song;
+	}
 
 	let rankingId = $derived(parseInt($page.params.id ?? '0'));
 	let ranking = $derived(rankings.list.find((r) => r.id === rankingId));
 
+	let matchup = $state<Matchup | null>(null);
+	let phase = $state<'loading' | 'ready' | 'picking' | 'empty' | 'error'>('loading');
 	let importOpen = $state(false);
 	let songCount = $state(0);
 
+	// reload matchup when the ranking changes
+	$effect(() => {
+		if (rankingId) loadNext();
+	});
+
+	async function loadNext() {
+		phase = 'loading';
+		try {
+			const result = await api.get<Matchup>(`/api/v1/rankings/${rankingId}/matchups/next`);
+			matchup = result;
+			phase = 'ready';
+		} catch (err: unknown) {
+			const e = err as { status?: number };
+			phase = e?.status === 422 ? 'empty' : 'error';
+		}
+	}
+
+	async function pick(winnerId: number) {
+		if (!matchup || phase !== 'ready') return;
+		phase = 'picking';
+		try {
+			await api.post(`/api/v1/rankings/${rankingId}/matchups`, {
+				matchup: {
+					winner_id: winnerId,
+					song_a_id: matchup.song_a.id,
+					song_b_id: matchup.song_b.id
+				}
+			});
+			await loadNext();
+		} catch {
+			phase = 'error';
+		}
+	}
+
+	function skip() {
+		loadNext();
+	}
+
 	function onSongsAdded(count: number) {
 		songCount += count;
+		// reload matchup — there may now be enough songs
+		loadNext();
 	}
+
+	function onKeydown(e: KeyboardEvent) {
+		if (!matchup || phase !== 'ready') return;
+		if (e.key === 'ArrowLeft') pick(matchup.song_a.id);
+		if (e.key === 'ArrowRight') pick(matchup.song_b.id);
+		if (e.key === 's' || e.key === 'S') skip();
+	}
+
+	onMount(() => {
+		return () => { matchup = null; };
+	});
 </script>
 
-<!-- center: matchup area (built in next step) -->
+<svelte:window onkeydown={onKeydown} />
+
+<!-- center: matchup -->
 <div class="center">
 	{#if ranking}
-		<div class="matchup-placeholder">
+		<div class="matchup-header">
 			<p class="label">which do you prefer?</p>
 			<p class="ranking-name">{ranking.name}</p>
-			<p class="sub">matchup screen coming next</p>
+		</div>
+	{/if}
+
+	<div class="cards-area">
+		{#if phase === 'loading' || phase === 'picking'}
+			<div class="state-msg">
+				<IconLoader2 size={24} class="spin" />
+			</div>
+
+		{:else if phase === 'empty'}
+			<div class="state-msg">
+				<p class="state-title">not enough songs</p>
+				<p class="state-sub">add at least 2 songs to start matching</p>
+			</div>
+
+		{:else if phase === 'error'}
+			<div class="state-msg">
+				<p class="state-title">something went wrong</p>
+				<button class="retry-btn" onclick={loadNext}>retry</button>
+			</div>
+
+		{:else if matchup}
+			<SongCard
+				song={matchup.song_a}
+				tilt={-1.2}
+				disabled={phase !== 'ready'}
+				onPick={() => pick(matchup!.song_a.id)}
+			/>
+			<SongCard
+				song={matchup.song_b}
+				tilt={1.2}
+				disabled={phase !== 'ready'}
+				onPick={() => pick(matchup!.song_b.id)}
+			/>
+		{/if}
+	</div>
+
+	{#if phase === 'ready'}
+		<div class="controls">
+			<button class="control-btn" onclick={skip} title="Skip (S)">
+				<IconArrowsShuffle size={14} />
+				Skip
+			</button>
+			<p class="key-hint">← → to pick · S to skip</p>
 		</div>
 	{/if}
 </div>
@@ -46,7 +160,7 @@
 		</div>
 	{:else}
 		<div class="list-placeholder">
-			<p class="sub">ranked list coming next step</p>
+			<p class="sub">ranked list — next step</p>
 		</div>
 	{/if}
 </aside>
@@ -61,21 +175,29 @@
 {/if}
 
 <style>
+	:global(.spin) {
+		animation: spin 1s linear infinite;
+	}
+	@keyframes spin { to { transform: rotate(360deg); } }
+
 	.center {
 		flex: 1;
 		border-right: var(--border);
 		display: flex;
+		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		padding: 48px;
+		padding: 40px 56px;
+		gap: 32px;
+		overflow: hidden;
 	}
 
-	.matchup-placeholder {
+	.matchup-header {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 8px;
-		text-align: center;
+		gap: 6px;
+		flex-shrink: 0;
 	}
 
 	.label {
@@ -88,16 +210,82 @@
 
 	.ranking-name {
 		font-family: var(--font-serif);
-		font-size: 32px;
+		font-size: 28px;
 	}
 
-	.sub {
+	.cards-area {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 72px;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.state-msg {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+		color: var(--muted);
+	}
+
+	.state-title {
+		font-family: var(--font-serif);
+		font-size: 20px;
+		color: var(--ink);
+	}
+
+	.state-sub {
 		font-family: var(--font-mono);
-		font-size: 10px;
+		font-size: 11px;
 		color: var(--muted);
 		letter-spacing: 0.3px;
 	}
 
+	.retry-btn {
+		background: none;
+		border: var(--border);
+		border-radius: 6px;
+		padding: 8px 18px;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		letter-spacing: 0.3px;
+		cursor: pointer;
+		color: var(--ink);
+	}
+
+	.controls {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 8px;
+		flex-shrink: 0;
+	}
+
+	.control-btn {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		background: none;
+		border: var(--border);
+		border-radius: 20px;
+		padding: 8px 16px;
+		font-family: var(--font-serif);
+		font-size: 14px;
+		cursor: pointer;
+		color: var(--ink);
+	}
+	.control-btn:hover { background: rgba(26, 26, 26, 0.04); }
+
+	.key-hint {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		color: var(--muted);
+		letter-spacing: 0.5px;
+	}
+
+	/* right panel */
 	.right-panel {
 		width: 320px;
 		flex-shrink: 0;
@@ -169,5 +357,12 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+	.sub {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		color: var(--muted);
+		letter-spacing: 0.3px;
 	}
 </style>
