@@ -3,28 +3,38 @@ class SpotifyClient
 
   def initialize(user)
     SpotifyTokenRefreshService.call(user)
-    @token = user.reload.access_token
+    user.reload
+    @token = user.access_token
+    @user  = user
   end
 
   def search(query, type:, limit: 10)
-    get("/search", q: query, type: type, limit: limit)
+    get("/search", { q: query, type: type, limit: limit })
   end
 
-  def artist_albums(artist_id, offset: 0)
-    get("/artists/#{artist_id}/albums", offset: offset, include_groups: "album,single", market: user_market)
+  def artist_albums(artist_id, offset: 0, limit: 50)
+    get("/artists/#{artist_id}/albums", { offset: offset, limit: limit, include_groups: "album,single", market: user_market })
   end
 
   def album_tracks(album_id, offset: 0)
-    get("/albums/#{album_id}/tracks", offset: offset, limit: 50, market: user_market)
+    get("/albums/#{album_id}/tracks", { offset: offset, limit: 50, market: user_market })
   end
 
   private
 
   def user_market
-    @user_market ||= get("/me")["country"]
+    @user_market ||= begin
+      if @user.spotify_market.present?
+        @user.spotify_market
+      else
+        market = get("/me")["country"]
+        @user.update_column(:spotify_market, market)
+        market
+      end
+    end
   end
 
-  def get(path, params = {})
+  def get(path, params = {}, retries: 2)
     uri = URI("#{BASE_URL}#{path}")
     if params.any?
       uri.query = params.map { |k, v|
@@ -36,6 +46,13 @@ class SpotifyClient
     req["Authorization"] = "Bearer #{@token}"
 
     res = Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |http| http.request(req) }
+
+    if res.code == "429" && retries > 0
+      wait = (res["Retry-After"] || "2").to_i
+      sleep(wait)
+      return get(path, params, retries: retries - 1)
+    end
+
     raise "spotify api error #{res.code}: #{res.body}" unless res.is_a?(Net::HTTPSuccess)
 
     JSON.parse(res.body)

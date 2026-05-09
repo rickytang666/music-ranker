@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { IconPlus, IconLoader2, IconArrowsShuffle, IconShare, IconCheck } from '@tabler/icons-svelte';
+	import { IconPlus, IconLoader2, IconArrowsShuffle, IconShare, IconCheck, IconRotate } from '@tabler/icons-svelte';
 	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
@@ -113,6 +113,12 @@
 	}
 
 	async function onSongsAdded() {
+		await Promise.all([loadNext(), loadSongs()]);
+	}
+
+	async function resetRanking() {
+		if (!confirm('Reset all ELO scores and match history? This cannot be undone.')) return;
+		await api.post(`/api/v1/rankings/${rankingId}/reset`, {});
 		await Promise.all([loadNext(), loadSongs()]);
 	}
 
@@ -233,6 +239,11 @@
 						</div>
 					{/if}
 				</div>
+			{/if}
+			{#if rankedSongs.length > 0}
+				<button class="icon-btn" onclick={resetRanking} title="Reset ranking">
+					<IconRotate size={14} />
+				</button>
 			{/if}
 			<button class="icon-btn" onclick={() => (importOpen = true)} title="Add songs">
 				<IconPlus size={14} />

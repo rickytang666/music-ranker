@@ -6,7 +6,8 @@ class AuthController < ApplicationController
       display_name: auth.info.name,
       access_token: auth.credentials.token,
       refresh_token: auth.credentials.refresh_token,
-      token_expires_at: Time.at(auth.credentials.expires_at)
+      token_expires_at: Time.at(auth.credentials.expires_at),
+      spotify_market: auth.extra.raw_info["country"]
     )
     token = JsonWebToken.encode(user_id: user.id)
     redirect_to "#{ENV.fetch("FRONTEND_ORIGIN")}/auth/callback?token=#{token}", allow_other_host: true

@@ -36,12 +36,13 @@
 	} = $props();
 
 	type Mode = 'song' | 'album' | 'artist';
-	type Phase = 'idle' | 'searching' | 'results' | 'loading' | 'tracks' | 'no-results' | 'error';
+	type Phase = 'idle' | 'searching' | 'results' | 'loading' | 'discography' | 'tracks' | 'no-results' | 'error';
 
 	let mode = $state<Mode>('song');
 	let phase = $state<Phase>('idle');
 	let query = $state('');
 	let errorMsg = $state('');
+	let loadingMsg = $state('loading…');
 	let saving = $state(false);
 
 	let songResults = $state<Track[]>([]);
@@ -111,6 +112,13 @@
 		selectedItems = next;
 	}
 
+	function toggleAllItems() {
+		selectedItems =
+			selectedItems.size === albumResults.length
+				? new Set()
+				: new Set(albumResults.map((a) => a.id));
+	}
+
 	function toggleTrack(id: number) {
 		const next = new Set(selectedTracks);
 		next.has(id) ? next.delete(id) : next.add(id);
@@ -122,27 +130,33 @@
 			selectedTracks.size === tracks.length ? new Set() : new Set(tracks.map((t) => t.id));
 	}
 
-	async function loadTracks() {
-		if (!selectedItems.size) return;
+	async function loadDiscography(artistId: string) {
+		selectedItems = new Set();
+		loadingMsg = 'loading discography…';
 		phase = 'loading';
 		try {
-			let batches: Track[][];
-			if (mode === 'album') {
-				batches = await Promise.all(
-					albumResults
-						.filter((a) => selectedItems.has(a.id))
-						.map((album) => {
-							const p = new URLSearchParams({ name: album.name, art: album.image_url ?? '' });
-							return api.get<Track[]>(`/api/v1/spotify/albums/${album.id}/tracks?${p}`);
-						})
-				);
-			} else {
-				batches = await Promise.all(
-					[...selectedItems].map((id) =>
-						api.get<Track[]>(`/api/v1/spotify/artists/${id}/tracks`)
-					)
-				);
-			}
+			albumResults = await api.get<AlbumResult[]>(`/api/v1/spotify/artists/${artistId}/albums`);
+			selectedItems = new Set(albumResults.map((a) => a.id));
+			phase = albumResults.length ? 'discography' : 'no-results';
+		} catch {
+			errorMsg = 'failed to load discography. try again.';
+			phase = 'error';
+		}
+	}
+
+	async function loadTracks() {
+		if (!selectedItems.size) return;
+		loadingMsg = `loading ${selectedItems.size} album${selectedItems.size > 1 ? 's' : ''}…`;
+		phase = 'loading';
+		try {
+			const batches = await Promise.all(
+				albumResults
+					.filter((a) => selectedItems.has(a.id))
+					.map((album) => {
+						const p = new URLSearchParams({ name: album.name, art: album.image_url ?? '' });
+						return api.get<Track[]>(`/api/v1/spotify/albums/${album.id}/tracks?${p}`);
+					})
+			);
 			const seen = new Set<number>();
 			tracks = batches.flat().filter((t) => {
 				if (seen.has(t.id)) return false;
@@ -158,9 +172,19 @@
 	}
 
 	function backToResults() {
-		phase = 'results';
+		if (phase === 'tracks' && mode === 'artist') {
+			phase = 'discography';
+		} else {
+			phase = 'results';
+		}
 		tracks = [];
 		selectedTracks = new Set();
+	}
+
+	function backToArtistResults() {
+		phase = 'results';
+		albumResults = [];
+		selectedItems = new Set();
 	}
 
 	async function addSongs() {
@@ -190,12 +214,9 @@
 		(mode === 'song' && phase === 'results' && selectedTracks.size > 0) ||
 		(phase === 'tracks' && selectedTracks.size > 0)
 	);
-	let canLoad = $derived(phase === 'results' && mode !== 'song' && selectedItems.size > 0);
-
-	let loadingLabel = $derived(
-		mode === 'album'
-			? `loading ${selectedItems.size} album${selectedItems.size > 1 ? 's' : ''}…`
-			: `importing ${selectedItems.size} artist${selectedItems.size > 1 ? 's' : ''}…`
+	let canLoad = $derived(
+		(phase === 'results' && mode === 'album' && selectedItems.size > 0) ||
+		(phase === 'discography' && selectedItems.size > 0)
 	);
 </script>
 
@@ -248,7 +269,7 @@
 			{:else if phase === 'loading'}
 				<div class="spinner-row">
 					<IconLoader2 size={18} class="spin" />
-					<span>{loadingLabel}</span>
+					<span>{loadingMsg}</span>
 				</div>
 
 			{:else if phase === 'results' && mode === 'song'}
@@ -296,9 +317,8 @@
 			{:else if phase === 'results' && mode === 'artist'}
 				<ul class="item-list">
 					{#each artistResults as artist (artist.id)}
-						{@const sel = selectedItems.has(artist.id)}
 						<li>
-							<button class="item-row" class:selected={sel} onclick={() => toggleItem(artist.id)}>
+							<button class="item-row" onclick={() => loadDiscography(artist.id)}>
 								{#if artist.image_url}
 									<img src={artist.image_url} alt={artist.name} class="item-img round" />
 								{:else}
@@ -306,6 +326,33 @@
 								{/if}
 								<div class="item-info">
 									<span class="item-name">{artist.name}</span>
+								</div>
+								<span class="item-nav">→</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+
+			{:else if phase === 'discography'}
+				<div class="tracks-header">
+					<button class="text-btn" onclick={backToArtistResults}>← back</button>
+					<button class="text-btn" onclick={toggleAllItems}>
+						{selectedItems.size === albumResults.length ? 'deselect all' : 'select all'}
+					</button>
+				</div>
+				<ul class="item-list">
+					{#each albumResults as album (album.id)}
+						{@const sel = selectedItems.has(album.id)}
+						<li>
+							<button class="item-row" class:selected={sel} onclick={() => toggleItem(album.id)}>
+								{#if album.image_url}
+									<img src={album.image_url} alt={album.name} class="item-img square" />
+								{:else}
+									<div class="item-img square placeholder"></div>
+								{/if}
+								<div class="item-info">
+									<span class="item-name">{album.name}</span>
+									<span class="item-sub">{album.artist_name}</span>
 								</div>
 								<div class="check" class:visible={sel}><IconCheck size={12} /></div>
 							</button>
@@ -354,7 +401,7 @@
 					{selectedTracks.size} / {tracks.length} selected
 				{:else if mode === 'song' && phase === 'results'}
 					{selectedTracks.size > 0 ? `${selectedTracks.size} selected` : ''}
-				{:else if phase === 'results' && selectedItems.size > 0}
+				{:else if (phase === 'results' || phase === 'discography') && selectedItems.size > 0}
 					{selectedItems.size} selected
 				{/if}
 			</span>
@@ -565,6 +612,13 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+
+	.item-nav {
+		font-family: var(--font-mono);
+		font-size: 14px;
+		color: var(--muted);
+		flex-shrink: 0;
 	}
 
 	.check {

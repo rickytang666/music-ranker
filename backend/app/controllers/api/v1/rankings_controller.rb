@@ -1,7 +1,7 @@
 module Api
   module V1
     class RankingsController < BaseController
-      before_action :set_ranking, only: [:update, :destroy]
+      before_action :set_ranking, only: [:update, :destroy, :reset]
 
       def index
         rankings = current_user.rankings.order(created_at: :desc)
@@ -27,6 +27,12 @@ module Api
 
       def destroy
         @ranking.destroy
+        head :no_content
+      end
+
+      def reset
+        @ranking.ranking_songs.update_all(elo_score: 1000.0, matchup_count: 0)
+        @ranking.matchups.delete_all
         head :no_content
       end
 

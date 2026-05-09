@@ -14,11 +14,13 @@ Rails.application.routes.draw do
         get "search/artists",     to: "spotify#search_artists"
         get "search/albums",      to: "spotify#search_albums"
         get "search/tracks",      to: "spotify#search_tracks"
+        get "artists/:id/albums", to: "spotify#artist_albums"
         get "artists/:id/tracks", to: "spotify#artist_tracks"
         get "albums/:id/tracks",  to: "spotify#album_tracks"
       end
 
       resources :rankings, only: [:index, :create, :update, :destroy] do
+          member { post :reset }
         resources :songs, only: [:index, :create, :destroy]
         resources :matchups, only: [:create] do
           collection { get :next }

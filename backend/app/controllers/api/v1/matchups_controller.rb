@@ -1,6 +1,7 @@
 module Api
   module V1
     class MatchupsController < BaseController
+      wrap_parameters false
       before_action :set_ranking
 
       def next

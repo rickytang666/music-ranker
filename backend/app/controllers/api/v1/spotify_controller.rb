@@ -16,6 +16,11 @@ module Api
         render json: songs.map { |s| s.as_json(only: [:id, :spotify_track_id, :title, :artist_name, :album_name, :album_art_url]) }
       end
 
+      def artist_albums
+        results = importer.artist_albums(params[:id])
+        render json: results
+      end
+
       def artist_tracks
         songs = importer.import_artist_tracks(params[:id])
         render json: songs.map { |s| s.as_json(only: [:id, :spotify_track_id, :title, :artist_name, :album_name, :album_art_url]) }

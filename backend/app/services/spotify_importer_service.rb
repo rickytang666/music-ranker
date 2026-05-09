@@ -28,6 +28,18 @@ class SpotifyImporterService
     upsert_songs(tracks)
   end
 
+  def artist_albums(artist_id)
+    data = @client.artist_albums(artist_id)
+    data["items"].map do |a|
+      {
+        id: a["id"],
+        name: a["name"],
+        artist_name: a.dig("artists", 0, "name"),
+        image_url: a.dig("images", 0, "url")
+      }
+    end
+  end
+
   def import_artist_tracks(artist_id)
     albums = fetch_all_albums(artist_id)
     tracks = fetch_tracks_for_albums(albums)
