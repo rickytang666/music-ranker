@@ -4,6 +4,7 @@
 	import { IconPlus, IconLoader2, IconArrowsShuffle } from '@tabler/icons-svelte';
 	import { api } from '$lib/api';
 	import { rankings } from '$lib/stores/rankings.svelte';
+	import { flagStore } from '$lib/stores/signals.svelte';
 	import SongCard from '$lib/components/SongCard.svelte';
 	import SongImportModal from '$lib/components/SongImportModal.svelte';
 	import RankedList, { type RankedSong } from '$lib/components/RankedList.svelte';
@@ -39,7 +40,7 @@
 	async function loadNext() {
 		matchupPhase = 'loading';
 		try {
-			const result = await api.get<Matchup>(`/api/v1/rankings/${rankingId}/matchups/next`);
+			const result = await api.get<Matchup>(`/api/v1/rankings/${rankingId}/matchups/next${flagStore.toQueryString()}`);
 			matchup = result;
 			matchupPhase = 'ready';
 		} catch (err: unknown) {
@@ -67,6 +68,7 @@
 					song_b_id: matchup.song_b.id
 				}
 			});
+			flagStore.tick();
 			await Promise.all([loadNext(), loadSongs()]);
 		} catch {
 			matchupPhase = 'error';
