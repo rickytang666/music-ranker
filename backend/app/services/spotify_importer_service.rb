@@ -10,15 +10,43 @@ class SpotifyImporterService
     end
   end
 
+  def search_albums(query)
+    data = @client.search(query, type: "album", limit: 10)
+    data.dig("albums", "items").map do |a|
+      {
+        id: a["id"],
+        name: a["name"],
+        artist_name: a.dig("artists", 0, "name"),
+        image_url: a.dig("images", 0, "url")
+      }
+    end
+  end
+
   def search_tracks(query)
     data = @client.search(query, type: "track", limit: 10)
-    data.dig("tracks", "items").map { |t| serialize_track(t) }
+    tracks = data.dig("tracks", "items").map { |t| serialize_track(t) }
+    upsert_songs(tracks)
   end
 
   def import_artist_tracks(artist_id)
     albums = fetch_all_albums(artist_id)
     tracks = fetch_tracks_for_albums(albums)
     upsert_songs(tracks)
+  end
+
+  def import_album_tracks(album_id, album: nil)
+    tracks = []
+    offset = 0
+    loop do
+      data = @client.album_tracks(album_id, offset: offset)
+      tracks += data["items"]
+      break if data["next"].nil?
+      offset += data["items"].length
+    end
+    upsert_songs(tracks.map { |t| serialize_track(t, album: album) })
+  rescue RuntimeError => e
+    Rails.logger.warn "album import failed #{album_id}: #{e.message}"
+    []
   end
 
   private

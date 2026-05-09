@@ -1,18 +1,6 @@
 <script lang="ts">
-	import {
-		IconSearch,
-		IconX,
-		IconChevronRight,
-		IconCheck,
-		IconLoader2
-	} from '@tabler/icons-svelte';
+	import { IconSearch, IconX, IconCheck, IconLoader2 } from '@tabler/icons-svelte';
 	import { api } from '$lib/api';
-
-	interface Artist {
-		id: string;
-		name: string;
-		image_url: string | null;
-	}
 
 	interface Track {
 		id: number;
@@ -20,6 +8,19 @@
 		artist_name: string;
 		album_name: string | null;
 		album_art_url: string | null;
+	}
+
+	interface AlbumResult {
+		id: string;
+		name: string;
+		artist_name: string;
+		image_url: string | null;
+	}
+
+	interface ArtistResult {
+		id: string;
+		name: string;
+		image_url: string | null;
 	}
 
 	let {
@@ -31,48 +32,124 @@
 		rankingId: number;
 		rankingName: string;
 		onClose: () => void;
-		onAdded: (count: number) => void;
+		onAdded: () => void;
 	} = $props();
 
-	type Phase = 'idle' | 'searching' | 'artists' | 'loading-tracks' | 'tracks' | 'no-results' | 'error';
+	type Mode = 'song' | 'album' | 'artist';
+	type Phase = 'idle' | 'searching' | 'results' | 'loading' | 'tracks' | 'no-results' | 'error';
 
+	let mode = $state<Mode>('song');
 	let phase = $state<Phase>('idle');
 	let query = $state('');
-	let artists = $state<Artist[]>([]);
-	let tracks = $state<Track[]>([]);
-	let selected = $state(new Set<number>());
-	let activeArtist = $state<Artist | null>(null);
 	let errorMsg = $state('');
 	let saving = $state(false);
 
+	let songResults = $state<Track[]>([]);
+	let albumResults = $state<AlbumResult[]>([]);
+	let artistResults = $state<ArtistResult[]>([]);
+	let selectedItems = $state(new Set<string>());
+
+	let tracks = $state<Track[]>([]);
+	let selectedTracks = $state(new Set<number>());
+
 	let searchTimer: ReturnType<typeof setTimeout>;
+
+	const placeholders: Record<Mode, string> = {
+		song: 'Search for a song…',
+		album: 'Search for an album…',
+		artist: 'Search for an artist…'
+	};
+
+	function switchMode(m: Mode) {
+		if (mode === m) return;
+		mode = m;
+		query = '';
+		phase = 'idle';
+		songResults = [];
+		albumResults = [];
+		artistResults = [];
+		selectedItems = new Set();
+		tracks = [];
+		selectedTracks = new Set();
+		clearTimeout(searchTimer);
+	}
 
 	function onInput() {
 		clearTimeout(searchTimer);
 		const q = query.trim();
 		if (!q) { phase = 'idle'; return; }
-		searchTimer = setTimeout(() => searchArtists(q), 400);
+		phase = 'searching';
+		searchTimer = setTimeout(() => doSearch(q), 400);
 	}
 
-	async function searchArtists(q: string) {
-		phase = 'searching';
+	async function doSearch(q: string) {
+		selectedItems = new Set();
+		selectedTracks = new Set();
 		try {
-			const results = await api.get<Artist[]>(`/api/v1/spotify/search/artists?q=${encodeURIComponent(q)}`);
-			artists = results;
-			phase = results.length ? 'artists' : 'no-results';
+			if (mode === 'song') {
+				const r = await api.get<Track[]>(`/api/v1/spotify/search/tracks?q=${encodeURIComponent(q)}`);
+				songResults = r;
+				phase = r.length ? 'results' : 'no-results';
+			} else if (mode === 'album') {
+				const r = await api.get<AlbumResult[]>(`/api/v1/spotify/search/albums?q=${encodeURIComponent(q)}`);
+				albumResults = r;
+				phase = r.length ? 'results' : 'no-results';
+			} else {
+				const r = await api.get<ArtistResult[]>(`/api/v1/spotify/search/artists?q=${encodeURIComponent(q)}`);
+				artistResults = r;
+				phase = r.length ? 'results' : 'no-results';
+			}
 		} catch {
 			errorMsg = 'search failed. check your connection.';
 			phase = 'error';
 		}
 	}
 
-	async function loadTracks(artist: Artist) {
-		activeArtist = artist;
-		phase = 'loading-tracks';
-		selected = new Set();
+	function toggleItem(id: string) {
+		const next = new Set(selectedItems);
+		next.has(id) ? next.delete(id) : next.add(id);
+		selectedItems = next;
+	}
+
+	function toggleTrack(id: number) {
+		const next = new Set(selectedTracks);
+		next.has(id) ? next.delete(id) : next.add(id);
+		selectedTracks = next;
+	}
+
+	function toggleAllTracks() {
+		selectedTracks =
+			selectedTracks.size === tracks.length ? new Set() : new Set(tracks.map((t) => t.id));
+	}
+
+	async function loadTracks() {
+		if (!selectedItems.size) return;
+		phase = 'loading';
 		try {
-			const results = await api.get<Track[]>(`/api/v1/spotify/artists/${artist.id}/tracks`);
-			tracks = results;
+			let batches: Track[][];
+			if (mode === 'album') {
+				batches = await Promise.all(
+					albumResults
+						.filter((a) => selectedItems.has(a.id))
+						.map((album) => {
+							const p = new URLSearchParams({ name: album.name, art: album.image_url ?? '' });
+							return api.get<Track[]>(`/api/v1/spotify/albums/${album.id}/tracks?${p}`);
+						})
+				);
+			} else {
+				batches = await Promise.all(
+					[...selectedItems].map((id) =>
+						api.get<Track[]>(`/api/v1/spotify/artists/${id}/tracks`)
+					)
+				);
+			}
+			const seen = new Set<number>();
+			tracks = batches.flat().filter((t) => {
+				if (seen.has(t.id)) return false;
+				seen.add(t.id);
+				return true;
+			});
+			selectedTracks = new Set(tracks.map((t) => t.id));
 			phase = 'tracks';
 		} catch {
 			errorMsg = 'failed to load tracks. try again.';
@@ -80,32 +157,20 @@
 		}
 	}
 
-	function toggleTrack(id: number) {
-		const next = new Set(selected);
-		next.has(id) ? next.delete(id) : next.add(id);
-		selected = next;
-	}
-
-	function toggleAll() {
-		selected = selected.size === tracks.length
-			? new Set()
-			: new Set(tracks.map((t) => t.id));
-	}
-
-	function backToArtists() {
-		phase = 'artists';
-		activeArtist = null;
+	function backToResults() {
+		phase = 'results';
+		tracks = [];
+		selectedTracks = new Set();
 	}
 
 	async function addSongs() {
-		if (!selected.size || saving) return;
+		const ids =
+			phase === 'tracks' ? [...selectedTracks] : [...selectedTracks];
+		if (!ids.length || saving) return;
 		saving = true;
 		try {
-			const result = await api.post<{ added: number }>(
-				`/api/v1/rankings/${rankingId}/songs`,
-				{ song_ids: [...selected] }
-			);
-			onAdded(result.added);
+			await api.post(`/api/v1/rankings/${rankingId}/songs`, { song_ids: ids });
+			onAdded();
 			onClose();
 		} catch {
 			errorMsg = 'failed to add songs. try again.';
@@ -120,6 +185,18 @@
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') onClose();
 	}
+
+	let canAdd = $derived(
+		(mode === 'song' && phase === 'results' && selectedTracks.size > 0) ||
+		(phase === 'tracks' && selectedTracks.size > 0)
+	);
+	let canLoad = $derived(phase === 'results' && mode !== 'song' && selectedItems.size > 0);
+
+	let loadingLabel = $derived(
+		mode === 'album'
+			? `loading ${selectedItems.size} album${selectedItems.size > 1 ? 's' : ''}…`
+			: `importing ${selectedItems.size} artist${selectedItems.size > 1 ? 's' : ''}…`
+	);
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -138,12 +215,20 @@
 			</button>
 		</header>
 
+		<div class="mode-tabs">
+			{#each (['song', 'album', 'artist'] as Mode[]) as m}
+				<button class="mode-tab" class:active={mode === m} onclick={() => switchMode(m)}>
+					{m}
+				</button>
+			{/each}
+		</div>
+
 		<div class="search-row">
 			<IconSearch size={16} class="search-icon" />
 			<!-- svelte-ignore a11y_autofocus -->
 			<input
 				type="search"
-				placeholder="Search for an artist…"
+				placeholder={placeholders[mode]}
 				bind:value={query}
 				oninput={onInput}
 				autofocus
@@ -152,7 +237,7 @@
 
 		<div class="content">
 			{#if phase === 'idle'}
-				<p class="hint">search for an artist to import their songs</p>
+				<p class="hint">search for a {mode} to import</p>
 
 			{:else if phase === 'searching'}
 				<div class="spinner-row">
@@ -160,64 +245,103 @@
 					<span>searching…</span>
 				</div>
 
-			{:else if phase === 'artists'}
-				<ul class="artist-list">
-					{#each artists as artist (artist.id)}
+			{:else if phase === 'loading'}
+				<div class="spinner-row">
+					<IconLoader2 size={18} class="spin" />
+					<span>{loadingLabel}</span>
+				</div>
+
+			{:else if phase === 'results' && mode === 'song'}
+				<ul class="item-list">
+					{#each songResults as track (track.id)}
+						{@const sel = selectedTracks.has(track.id)}
 						<li>
-							<button class="artist-row" onclick={() => loadTracks(artist)}>
-								{#if artist.image_url}
-									<img src={artist.image_url} alt={artist.name} class="artist-img" />
+							<button class="item-row" class:selected={sel} onclick={() => toggleTrack(track.id)}>
+								{#if track.album_art_url}
+									<img src={track.album_art_url} alt={track.album_name ?? ''} class="item-img square" />
 								{:else}
-									<div class="artist-img placeholder"></div>
+									<div class="item-img square placeholder"></div>
 								{/if}
-								<span class="artist-name">{artist.name}</span>
-								<IconChevronRight size={14} class="chevron" />
+								<div class="item-info">
+									<span class="item-name">{track.title}</span>
+									<span class="item-sub">{track.artist_name}{track.album_name ? ` · ${track.album_name}` : ''}</span>
+								</div>
+								<div class="check" class:visible={sel}><IconCheck size={12} /></div>
 							</button>
 						</li>
 					{/each}
 				</ul>
 
-			{:else if phase === 'loading-tracks'}
-				<div class="spinner-row">
-					<IconLoader2 size={18} class="spin" />
-					<span>importing {activeArtist?.name} discography…</span>
-				</div>
+			{:else if phase === 'results' && mode === 'album'}
+				<ul class="item-list">
+					{#each albumResults as album (album.id)}
+						{@const sel = selectedItems.has(album.id)}
+						<li>
+							<button class="item-row" class:selected={sel} onclick={() => toggleItem(album.id)}>
+								{#if album.image_url}
+									<img src={album.image_url} alt={album.name} class="item-img square" />
+								{:else}
+									<div class="item-img square placeholder"></div>
+								{/if}
+								<div class="item-info">
+									<span class="item-name">{album.name}</span>
+									<span class="item-sub">{album.artist_name}</span>
+								</div>
+								<div class="check" class:visible={sel}><IconCheck size={12} /></div>
+							</button>
+						</li>
+					{/each}
+				</ul>
+
+			{:else if phase === 'results' && mode === 'artist'}
+				<ul class="item-list">
+					{#each artistResults as artist (artist.id)}
+						{@const sel = selectedItems.has(artist.id)}
+						<li>
+							<button class="item-row" class:selected={sel} onclick={() => toggleItem(artist.id)}>
+								{#if artist.image_url}
+									<img src={artist.image_url} alt={artist.name} class="item-img round" />
+								{:else}
+									<div class="item-img round placeholder"></div>
+								{/if}
+								<div class="item-info">
+									<span class="item-name">{artist.name}</span>
+								</div>
+								<div class="check" class:visible={sel}><IconCheck size={12} /></div>
+							</button>
+						</li>
+					{/each}
+				</ul>
 
 			{:else if phase === 'tracks'}
 				<div class="tracks-header">
-					<button class="back-btn" onclick={backToArtists}>← {activeArtist?.name}</button>
-					<button class="select-all-btn" onclick={toggleAll}>
-						{selected.size === tracks.length ? 'deselect all' : 'select all'}
+					<button class="text-btn" onclick={backToResults}>← back</button>
+					<button class="text-btn" onclick={toggleAllTracks}>
+						{selectedTracks.size === tracks.length ? 'deselect all' : 'select all'}
 					</button>
 				</div>
-				<ul class="track-list">
+				<ul class="item-list">
 					{#each tracks as track (track.id)}
-						{@const isSelected = selected.has(track.id)}
+						{@const sel = selectedTracks.has(track.id)}
 						<li>
-							<button
-								class="track-row"
-								class:selected={isSelected}
-								onclick={() => toggleTrack(track.id)}
-							>
+							<button class="item-row" class:selected={sel} onclick={() => toggleTrack(track.id)}>
 								{#if track.album_art_url}
-									<img src={track.album_art_url} alt={track.album_name ?? ''} class="track-img" />
+									<img src={track.album_art_url} alt={track.album_name ?? ''} class="item-img square" />
 								{:else}
-									<div class="track-img placeholder"></div>
+									<div class="item-img square placeholder"></div>
 								{/if}
-								<div class="track-info">
-									<span class="track-title">{track.title}</span>
-									<span class="track-sub">{track.album_name ?? track.artist_name}</span>
+								<div class="item-info">
+									<span class="item-name">{track.title}</span>
+									<span class="item-sub">{track.artist_name}{track.album_name ? ` · ${track.album_name}` : ''}</span>
 								</div>
-								<div class="check" class:visible={isSelected}>
-									<IconCheck size={12} />
-								</div>
+								<div class="check" class:visible={sel}><IconCheck size={12} /></div>
 							</button>
 						</li>
 					{/each}
 				</ul>
 
 			{:else if phase === 'no-results'}
-				<p class="hint">no artists found for "{query}"</p>
+				<p class="hint">no results for "{query}"</p>
 
 			{:else if phase === 'error'}
 				<p class="hint error">{errorMsg}</p>
@@ -226,15 +350,23 @@
 
 		<footer>
 			<span class="count">
-				{selected.size > 0 ? `${selected.size} selected` : ''}
+				{#if phase === 'tracks'}
+					{selectedTracks.size} / {tracks.length} selected
+				{:else if mode === 'song' && phase === 'results'}
+					{selectedTracks.size > 0 ? `${selectedTracks.size} selected` : ''}
+				{:else if phase === 'results' && selectedItems.size > 0}
+					{selectedItems.size} selected
+				{/if}
 			</span>
-			<button
-				class="add-btn"
-				onclick={addSongs}
-				disabled={selected.size === 0 || saving}
-			>
-				{saving ? 'adding…' : `Add ${selected.size || ''} songs`.trim()}
-			</button>
+			{#if canLoad}
+				<button class="add-btn" onclick={loadTracks}>
+					Load tracks →
+				</button>
+			{:else}
+				<button class="add-btn" onclick={addSongs} disabled={!canAdd || saving}>
+					{saving ? 'adding…' : selectedTracks.size > 0 ? `Add ${selectedTracks.size} songs` : 'Add songs'}
+				</button>
+			{/if}
 		</footer>
 	</div>
 </div>
@@ -302,6 +434,30 @@
 		color: var(--ink);
 	}
 
+	.mode-tabs {
+		display: flex;
+		border-bottom: var(--border);
+		flex-shrink: 0;
+	}
+
+	.mode-tab {
+		padding: 9px 20px;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		letter-spacing: 0.8px;
+		text-transform: uppercase;
+		border: none;
+		border-bottom: 2px solid transparent;
+		background: none;
+		cursor: pointer;
+		color: var(--muted);
+		margin-bottom: -1px;
+	}
+	.mode-tab.active {
+		color: var(--ink);
+		border-bottom-color: var(--ink);
+	}
+
 	.search-row {
 		display: flex;
 		align-items: center;
@@ -349,86 +505,14 @@
 		color: var(--muted);
 	}
 
-	:global(.spin) {
-		animation: spin 1s linear infinite;
-	}
+	:global(.spin) { animation: spin 1s linear infinite; }
 	@keyframes spin { to { transform: rotate(360deg); } }
 
 	ul { list-style: none; }
 
-	.artist-list { padding: 0 8px; }
+	.item-list { padding: 0 8px; }
 
-	.artist-row {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		width: 100%;
-		padding: 10px 12px;
-		background: none;
-		border: none;
-		border-radius: 6px;
-		cursor: pointer;
-		text-align: left;
-		color: var(--ink);
-	}
-	.artist-row:hover { background: rgba(26, 26, 26, 0.04); }
-
-	.artist-img {
-		width: 40px;
-		height: 40px;
-		border-radius: 50%;
-		object-fit: cover;
-		flex-shrink: 0;
-	}
-	.artist-img.placeholder {
-		background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(0,0,0,0.06) 6px 7px);
-		border: var(--border);
-		border-radius: 50%;
-	}
-
-	.artist-name {
-		flex: 1;
-		font-family: var(--font-serif);
-		font-size: 16px;
-	}
-
-	:global(.chevron) { color: var(--muted); }
-
-	.tracks-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 4px 20px 10px;
-		flex-shrink: 0;
-	}
-
-	.back-btn {
-		background: none;
-		border: none;
-		font-family: var(--font-mono);
-		font-size: 11px;
-		color: var(--muted);
-		cursor: pointer;
-		letter-spacing: 0.3px;
-		padding: 0;
-	}
-	.back-btn:hover { color: var(--ink); }
-
-	.select-all-btn {
-		background: none;
-		border: none;
-		font-family: var(--font-mono);
-		font-size: 11px;
-		color: var(--muted);
-		cursor: pointer;
-		letter-spacing: 0.3px;
-		padding: 0;
-	}
-	.select-all-btn:hover { color: var(--ink); }
-
-	.track-list { padding: 0 8px; }
-
-	.track-row {
+	.item-row {
 		display: flex;
 		align-items: center;
 		gap: 12px;
@@ -441,23 +525,23 @@
 		text-align: left;
 		color: var(--ink);
 	}
-	.track-row:hover { background: rgba(26, 26, 26, 0.04); }
-	.track-row.selected { background: rgba(26, 26, 26, 0.06); }
+	.item-row:hover { background: rgba(26, 26, 26, 0.04); }
+	.item-row.selected { background: rgba(26, 26, 26, 0.06); }
 
-	.track-img {
-		width: 36px;
-		height: 36px;
-		border-radius: 3px;
+	.item-img {
+		width: 38px;
+		height: 38px;
 		object-fit: cover;
 		flex-shrink: 0;
 	}
-	.track-img.placeholder {
+	.item-img.square { border-radius: 3px; border: 1px solid rgba(26,26,26,0.1); }
+	.item-img.round { border-radius: 50%; }
+	.item-img.placeholder {
 		background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(0,0,0,0.06) 5px 6px);
 		border: var(--border);
-		border-radius: 3px;
 	}
 
-	.track-info {
+	.item-info {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
@@ -465,7 +549,7 @@
 		min-width: 0;
 	}
 
-	.track-title {
+	.item-name {
 		font-family: var(--font-serif);
 		font-size: 15px;
 		white-space: nowrap;
@@ -473,7 +557,7 @@
 		text-overflow: ellipsis;
 	}
 
-	.track-sub {
+	.item-sub {
 		font-family: var(--font-mono);
 		font-size: 10px;
 		color: var(--muted);
@@ -492,7 +576,6 @@
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		background: transparent;
 		opacity: 0;
 	}
 	.check.visible {
@@ -500,6 +583,26 @@
 		color: var(--paper);
 		opacity: 1;
 	}
+
+	.tracks-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 4px 20px 10px;
+		flex-shrink: 0;
+	}
+
+	.text-btn {
+		background: none;
+		border: none;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		color: var(--muted);
+		cursor: pointer;
+		letter-spacing: 0.3px;
+		padding: 0;
+	}
+	.text-btn:hover { color: var(--ink); }
 
 	footer {
 		display: flex;
