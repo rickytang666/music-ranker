@@ -127,6 +127,11 @@
 	}
 
 	function onKeydown(e: KeyboardEvent) {
+		if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+			e.preventDefault();
+			importOpen = true;
+			return;
+		}
 		if (!matchup || matchupPhase !== 'ready') return;
 		if (e.key === 'ArrowLeft') pick(matchup.song_a.id);
 		if (e.key === 'ArrowRight') pick(matchup.song_b.id);
@@ -189,7 +194,7 @@
 				<IconArrowsShuffle size={14} />
 				Skip
 			</button>
-			<p class="key-hint">← → to pick · S to skip</p>
+			<p class="key-hint">← → to pick · S to skip · ⌘K to add</p>
 		</div>
 	{/if}
 </div>
