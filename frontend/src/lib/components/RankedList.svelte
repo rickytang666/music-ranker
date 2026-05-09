@@ -94,11 +94,15 @@
 			<div class="meta">
 				<span class="title">{song.title}</span>
 				<span class="artist">{song.artist_name}</span>
+				{#if song.album_name}
+					<span class="album">{song.album_name}</span>
+				{/if}
 			</div>
 
 			<div class="elo-col">
 				<span class="elo-score">{Math.round(song.elo_score)}</span>
 				<span class="elo-label">elo</span>
+				<span class="matchup-count">{song.matchup_count}×</span>
 			</div>
 		</div>
 	{/each}
@@ -216,6 +220,17 @@
 		text-overflow: ellipsis;
 	}
 
+	.album {
+		font-family: var(--font-mono);
+		font-size: 9px;
+		color: var(--muted);
+		letter-spacing: 0.3px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		opacity: 0.6;
+	}
+
 	.elo-col {
 		display: flex;
 		flex-direction: column;
@@ -239,5 +254,14 @@
 		letter-spacing: 1px;
 		text-transform: uppercase;
 		line-height: 1;
+	}
+
+	.matchup-count {
+		font-family: var(--font-mono);
+		font-size: 8px;
+		color: var(--muted);
+		letter-spacing: 0.5px;
+		line-height: 1;
+		opacity: 0.6;
 	}
 </style>
