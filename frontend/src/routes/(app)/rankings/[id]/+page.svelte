@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { IconPlus, IconLoader2, IconArrowsShuffle } from '@tabler/icons-svelte';
+	import { IconPlus, IconLoader2, IconArrowsShuffle, IconShare } from '@tabler/icons-svelte';
+	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import { api } from '$lib/api';
+	import { auth } from '$lib/stores/auth.svelte';
 	import { rankings } from '$lib/stores/rankings.svelte';
 	import { flagStore } from '$lib/stores/signals.svelte';
 	import SongCard from '$lib/components/SongCard.svelte';
@@ -29,6 +31,37 @@
 	let matchupPhase = $state<'loading' | 'ready' | 'picking' | 'empty' | 'error'>('loading');
 	let rankedSongs = $state<RankedSong[]>([]);
 	let importOpen = $state(false);
+	let exportOpen = $state(false);
+	let copyFeedback = $state(false);
+
+	async function fetchExportText(): Promise<string> {
+		const res = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/rankings/${rankingId}/export`, {
+			headers: { Authorization: `Bearer ${auth.token}`, Accept: 'text/plain' }
+		});
+		if (!res.ok) throw new Error('export failed');
+		return res.text();
+	}
+
+	async function copyToClipboard() {
+		const text = await fetchExportText();
+		await navigator.clipboard.writeText(text);
+		exportOpen = false;
+		copyFeedback = true;
+		setTimeout(() => (copyFeedback = false), 2000);
+	}
+
+	async function downloadTxt() {
+		const text = await fetchExportText();
+		const name = ranking?.name ?? 'ranking';
+		const blob = new Blob([text], { type: 'text/plain' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${name}.txt`;
+		a.click();
+		URL.revokeObjectURL(url);
+		exportOpen = false;
+	}
 
 	$effect(() => {
 		if (rankingId) {
@@ -160,9 +193,36 @@
 				<span class="song-count">{rankedSongs.length} songs · sorted</span>
 			{/if}
 		</div>
-		<button class="add-songs-btn" onclick={() => (importOpen = true)} title="Add songs">
-			<IconPlus size={14} />
-		</button>
+		<div class="panel-actions">
+			{#if rankedSongs.length > 0}
+				<div class="export-wrap">
+					<button
+						class="icon-btn"
+						class:active={copyFeedback}
+						onclick={() => (exportOpen = !exportOpen)}
+						title="Export"
+					>
+						{#if copyFeedback}
+							<span class="copied">copied!</span>
+						{:else}
+							<IconShare size={14} />
+						{/if}
+					</button>
+					{#if exportOpen}
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div class="export-overlay" onclick={() => (exportOpen = false)}></div>
+						<div class="export-menu">
+							<button class="export-item" onclick={copyToClipboard}>Copy to clipboard</button>
+							<button class="export-item" onclick={downloadTxt}>Download .txt</button>
+						</div>
+					{/if}
+				</div>
+			{/if}
+			<button class="icon-btn" onclick={() => (importOpen = true)} title="Add songs">
+				<IconPlus size={14} />
+			</button>
+		</div>
 	</div>
 
 	{#if rankedSongs.length === 0}
@@ -331,7 +391,13 @@
 		text-transform: uppercase;
 	}
 
-	.add-songs-btn {
+	.panel-actions {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.icon-btn {
 		background: none;
 		border: var(--border);
 		border-radius: 4px;
@@ -342,7 +408,57 @@
 		justify-content: center;
 		cursor: pointer;
 		color: var(--ink);
+		flex-shrink: 0;
 	}
+	.icon-btn.active {
+		background: var(--ink);
+		color: var(--paper);
+	}
+
+	.copied {
+		font-family: var(--font-mono);
+		font-size: 8px;
+		letter-spacing: 0.3px;
+		white-space: nowrap;
+	}
+
+	.export-wrap {
+		position: relative;
+	}
+
+	.export-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 9;
+	}
+
+	.export-menu {
+		position: absolute;
+		right: 0;
+		top: calc(100% + 6px);
+		background: var(--paper);
+		border: var(--border);
+		border-radius: 6px;
+		padding: 4px;
+		min-width: 160px;
+		box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.06);
+		z-index: 10;
+	}
+
+	.export-item {
+		display: block;
+		width: 100%;
+		text-align: left;
+		background: none;
+		border: none;
+		border-radius: 4px;
+		padding: 8px 12px;
+		font-family: var(--font-serif);
+		font-size: 14px;
+		color: var(--ink);
+		cursor: pointer;
+	}
+	.export-item:hover { background: rgba(26, 26, 26, 0.06); }
 
 	.empty-list {
 		flex: 1;
