@@ -51,9 +51,10 @@ class SpotifyImporterService
     offset = 0
     loop do
       data = @client.album_tracks(album_id, offset: offset)
-      tracks += data["items"]
-      break if data["next"].nil?
-      offset += data["items"].length
+      items = data["items"]
+      tracks += items
+      break if data["next"].nil? || items.empty?
+      offset += items.length
     end
     upsert_songs(tracks.map { |t| serialize_track(t, album: album) })
   rescue RuntimeError => e
@@ -67,10 +68,11 @@ class SpotifyImporterService
     albums = []
     offset = 0
     loop do
-      data = @client.artist_albums(artist_id, offset: offset)
-      albums += data["items"]
-      break if data["next"].nil?
-      offset += data["items"].length
+      data = @client.artist_albums(artist_id, offset: offset, limit: 50)
+      items = data["items"]
+      albums += items
+      break if data["next"].nil? || items.empty?
+      offset += items.length
     end
     albums
   end
@@ -81,9 +83,10 @@ class SpotifyImporterService
       offset = 0
       loop do
         data = @client.album_tracks(album["id"], offset: offset)
-        tracks += data["items"]
-        break if data["next"].nil?
-        offset += data["items"].length
+        items = data["items"]
+        tracks += items
+        break if data["next"].nil? || items.empty?
+        offset += items.length
       end
       tracks.map { |t| serialize_track(t, album: album) }
     rescue RuntimeError => e

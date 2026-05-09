@@ -45,7 +45,7 @@ class SpotifyClient
     req = Net::HTTP::Get.new(uri)
     req["Authorization"] = "Bearer #{@token}"
 
-    res = Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |http| http.request(req) }
+    res = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 5, read_timeout: 10) { |http| http.request(req) }
 
     if res.code == "429" && retries > 0
       wait = (res["Retry-After"] || "2").to_i

@@ -41,7 +41,7 @@ module Api
       end
 
       def signal_params
-        params.permit(overrated_ids: [], underrated_ids: [], unsure_ids: [])
+        params.permit(:ranking_id, overrated_ids: [], underrated_ids: [], unsure_ids: [])
       end
 
       def matchup_params
