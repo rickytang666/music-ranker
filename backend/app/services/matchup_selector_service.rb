@@ -1,16 +1,14 @@
 class MatchupSelectorService
-  FLAG_BOOST = 3.0
-
   def self.call(ranking, signals = {})
     new(ranking, signals).call
   end
 
   def initialize(ranking, signals)
-    @ranking       = ranking
-    @overrated_ids = (signals[:overrated_ids] || []).map(&:to_i)
+    @ranking        = ranking
+    @overrated_ids  = (signals[:overrated_ids]  || []).map(&:to_i)
     @underrated_ids = (signals[:underrated_ids] || []).map(&:to_i)
-    @unsure_ids    = (signals[:unsure_ids] || []).map(&:to_i)
-    @all_flagged   = @overrated_ids + @underrated_ids + @unsure_ids
+    @unsure_ids     = (signals[:unsure_ids]     || []).map(&:to_i)
+    @all_flagged    = @overrated_ids + @underrated_ids + @unsure_ids
   end
 
   def call
@@ -19,10 +17,19 @@ class MatchupSelectorService
 
     recent_pairs = recent_played_pairs
 
-    song_a_rs = weighted_sample(ranking_songs)
+    # flagged songs are forced into every matchup
+    flagged = ranking_songs.select { |rs| @all_flagged.include?(rs.song_id) }
+    song_a_rs = flagged.any? ? flagged.sample : weighted_sample(ranking_songs)
+
+    # try candidates with all constraints
     candidates = valid_opponents(song_a_rs, ranking_songs, recent_pairs)
 
-    # fallback: relax recency filter if no candidates
+    # fallback 1: relax recency
+    if candidates.empty?
+      candidates = ranking_songs.reject { |rs| rs == song_a_rs || violates_constraint?(song_a_rs, rs) }
+    end
+
+    # fallback 2: relax everything
     if candidates.empty?
       candidates = ranking_songs.reject { |rs| rs == song_a_rs }
     end
@@ -30,14 +37,13 @@ class MatchupSelectorService
     return nil if candidates.empty?
 
     song_b_rs = candidates.sample
-
     { song_a: song_a_rs.song, song_b: song_b_rs.song }
   end
 
   private
 
   def weighted_sample(ranking_songs)
-    weights = ranking_songs.map { |rs| weight(rs) }
+    weights = ranking_songs.map { |rs| 1.0 / (rs.matchup_count + 1) }
     total   = weights.sum
     r       = rand * total
     cumulative = 0.0
@@ -46,11 +52,6 @@ class MatchupSelectorService
       return rs if cumulative >= r
     end
     ranking_songs.last
-  end
-
-  def weight(rs)
-    base = 1.0 / (rs.matchup_count + 1)
-    @all_flagged.include?(rs.song_id) ? base * FLAG_BOOST : base
   end
 
   def valid_opponents(song_a_rs, all_rs, recent_pairs)
@@ -64,9 +65,11 @@ class MatchupSelectorService
   def violates_constraint?(song_a_rs, opponent_rs)
     id = song_a_rs.song_id
     if @overrated_ids.include?(id)
-      opponent_rs.elo_score >= song_a_rs.elo_score
+      # overrated: match against higher-ranked so it can lose and drop
+      opponent_rs.elo_score < song_a_rs.elo_score
     elsif @underrated_ids.include?(id)
-      opponent_rs.elo_score <= song_a_rs.elo_score
+      # underrated: match against lower-ranked so it can win and rise
+      opponent_rs.elo_score > song_a_rs.elo_score
     else
       false
     end

@@ -21,7 +21,7 @@ function clear(songId: number) {
 function tick() {
 	const next: Record<number, Signal> = {};
 	for (const [id, sig] of Object.entries(signals)) {
-		if (sig.remaining > 1) {
+		if (sig.remaining > 0) {
 			next[Number(id)] = { ...sig, remaining: sig.remaining - 1 };
 		}
 	}
