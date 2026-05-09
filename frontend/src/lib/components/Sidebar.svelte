@@ -6,6 +6,7 @@
     IconPlus,
     IconCheck,
     IconX,
+    IconDots,
   } from "@tabler/icons-svelte";
   import { api } from "$lib/api";
   import { rankings, type Ranking } from "$lib/stores/rankings.svelte";
@@ -16,6 +17,9 @@
   let creating = $state(false);
   let newName = $state("");
   let saving = $state(false);
+  let menuId = $state<number | null>(null);
+  let renamingId = $state<number | null>(null);
+  let renameValue = $state("");
 
   function firstGlyph(name: string) {
     const first = Array.from(name.trim())[0] ?? "";
@@ -42,7 +46,49 @@
     newName = "";
     creating = false;
   }
+
+  function startRename(ranking: Ranking) {
+    renamingId = ranking.id;
+    renameValue = ranking.name;
+    menuId = null;
+  }
+
+  function cancelRename() {
+    renamingId = null;
+    renameValue = "";
+  }
+
+  async function submitRename() {
+    if (!renameValue.trim() || !renamingId) return;
+    try {
+      const updated = await api.patch<Ranking>(`/api/v1/rankings/${renamingId}`, {
+        ranking: { name: renameValue.trim() },
+      });
+      rankings.update(updated);
+      renamingId = null;
+    } catch {
+      // keep editing on error
+    }
+  }
+
+  async function deleteRanking(ranking: Ranking) {
+    menuId = null;
+    if (!confirm(`Delete "${ranking.name}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/api/v1/rankings/${ranking.id}`);
+      rankings.remove(ranking.id);
+      if (activeId === ranking.id) goto("/");
+    } catch {
+      // silently ignore
+    }
+  }
 </script>
+
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+{#if menuId !== null}
+  <div class="overlay" onclick={() => (menuId = null)}></div>
+{/if}
 
 <aside class="sidebar" class:collapsed>
   <div class="header">
@@ -73,14 +119,44 @@
         >
           {firstGlyph(ranking.name)}
         </a>
+      {:else if renamingId === ranking.id}
+        <div class="tab-row rename-row">
+          <!-- svelte-ignore a11y_autofocus -->
+          <input
+            autofocus
+            class="rename-input"
+            bind:value={renameValue}
+            onkeydown={(e) => {
+              if (e.key === "Enter") submitRename();
+              if (e.key === "Escape") cancelRename();
+            }}
+          />
+          <button class="icon-btn" onclick={submitRename} disabled={!renameValue.trim()}>
+            <IconCheck size={13} />
+          </button>
+          <button class="icon-btn" onclick={cancelRename}>
+            <IconX size={13} />
+          </button>
+        </div>
       {:else}
-        <a
-          class="tab"
-          class:active={ranking.id === activeId}
-          href="/rankings/{ranking.id}"
-        >
-          {ranking.name}
-        </a>
+        <div class="tab-row" class:active={ranking.id === activeId}>
+          <a class="tab-link" href="/rankings/{ranking.id}">{ranking.name}</a>
+          <div class="tab-menu-wrap">
+            <button
+              class="tab-more icon-btn"
+              onclick={(e) => { e.preventDefault(); menuId = menuId === ranking.id ? null : ranking.id; }}
+              title="Options"
+            >
+              <IconDots size={13} />
+            </button>
+            {#if menuId === ranking.id}
+              <div class="tab-menu">
+                <button class="menu-item" onclick={() => startRename(ranking)}>Rename</button>
+                <button class="menu-item danger" onclick={() => deleteRanking(ranking)}>Delete</button>
+              </div>
+            {/if}
+          </div>
+        </div>
       {/if}
     {/each}
   </nav>
@@ -133,6 +209,12 @@
 </aside>
 
 <style>
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+  }
+
   .sidebar {
     width: 220px;
     flex-shrink: 0;
@@ -194,21 +276,96 @@
     overflow-y: auto;
   }
 
-  .tab {
-    display: block;
+  .tab-row {
+    display: flex;
+    align-items: center;
     border: var(--border);
     border-radius: 6px;
-    padding: 9px 11px;
+    padding: 0 6px 0 11px;
+    min-height: 40px;
+    gap: 4px;
+  }
+  .tab-row.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .tab-row.active .tab-link {
+    color: var(--paper);
+  }
+  .tab-row.active .tab-more {
+    border-color: rgba(255,255,255,0.25);
+    color: var(--paper);
+  }
+
+  .tab-link {
+    flex: 1;
     font-family: var(--font-serif);
     font-size: 16px;
     line-height: 1.2;
     color: var(--ink);
     text-decoration: none;
     word-break: break-word;
+    padding: 9px 0;
   }
-  .tab.active {
-    background: var(--ink);
-    color: var(--paper);
+
+  .tab-menu-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .tab-more {
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .tab-row:hover .tab-more {
+    opacity: 1;
+  }
+
+  .tab-menu {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    background: var(--paper);
+    border: var(--border);
+    border-radius: 6px;
+    padding: 4px;
+    min-width: 120px;
+    box-shadow: 3px 3px 0 0 rgba(0,0,0,0.06);
+    z-index: 10;
+  }
+
+  .menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-family: var(--font-serif);
+    font-size: 14px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .menu-item:hover { background: rgba(26,26,26,0.06); }
+  .menu-item.danger { color: #c0392b; }
+  .menu-item.danger:hover { background: rgba(192,57,43,0.07); }
+
+  .rename-row {
+    padding: 6px 6px 6px 8px;
+  }
+
+  .rename-input {
+    flex: 1;
+    border: none;
+    border-bottom: 1px solid var(--muted);
+    background: none;
+    font-family: var(--font-serif);
+    font-size: 15px;
+    color: var(--ink);
+    outline: none;
+    padding: 2px 4px;
+    min-width: 0;
   }
 
   .glyph-tab {
@@ -229,7 +386,6 @@
     background: var(--ink);
     color: var(--paper);
   }
-  /* active accent bar */
   .glyph-tab.active::before {
     content: "";
     position: absolute;

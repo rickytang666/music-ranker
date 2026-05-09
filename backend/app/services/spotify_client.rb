@@ -32,7 +32,6 @@ class SpotifyClient
       }.join("&")
     end
 
-    Rails.logger.info "SPOTIFY REQUEST: #{uri}"
     req = Net::HTTP::Get.new(uri)
     req["Authorization"] = "Bearer #{@token}"
 

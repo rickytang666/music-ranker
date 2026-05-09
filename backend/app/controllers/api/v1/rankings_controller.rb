@@ -1,7 +1,7 @@
 module Api
   module V1
     class RankingsController < BaseController
-      before_action :set_ranking, only: [:destroy]
+      before_action :set_ranking, only: [:update, :destroy]
 
       def index
         rankings = current_user.rankings.order(created_at: :desc)
@@ -14,6 +14,14 @@ module Api
           render json: ranking.as_json(only: [:id, :name, :created_at]), status: :created
         else
           render json: { errors: ranking.errors.full_messages }, status: :unprocessable_entity
+        end
+      end
+
+      def update
+        if @ranking.update(ranking_params)
+          render json: @ranking.as_json(only: [:id, :name, :created_at])
+        else
+          render json: { errors: @ranking.errors.full_messages }, status: :unprocessable_entity
         end
       end
 

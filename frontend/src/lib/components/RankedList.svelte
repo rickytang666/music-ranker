@@ -93,7 +93,7 @@
 			</div>
 
 			<div class="elo-col">
-				<span class="elo-score">{song.elo_score}</span>
+				<span class="elo-score">{Math.round(song.elo_score)}</span>
 				<span class="elo-label">elo</span>
 			</div>
 		</div>

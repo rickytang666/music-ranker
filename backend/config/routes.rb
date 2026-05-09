@@ -16,7 +16,7 @@ Rails.application.routes.draw do
         get "artists/:id/tracks", to: "spotify#artist_tracks"
       end
 
-      resources :rankings, only: [:index, :create, :destroy] do
+      resources :rankings, only: [:index, :create, :update, :destroy] do
         resources :songs, only: [:index, :create, :destroy]
         resources :matchups, only: [:create] do
           collection { get :next }
