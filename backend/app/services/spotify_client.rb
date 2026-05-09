@@ -10,20 +10,29 @@ class SpotifyClient
     get("/search", q: query, type: type, limit: limit)
   end
 
-  def artist_albums(artist_id, limit: 50, offset: 0)
-    get("/artists/#{artist_id}/albums", include_groups: "album,single", limit: limit, offset: offset)
+  def artist_albums(artist_id, offset: 0)
+    get("/artists/#{artist_id}/albums", offset: offset, include_groups: "album,single", market: user_market)
   end
 
-  def albums(ids)
-    get("/albums", ids: ids.join(","))
+  def album_tracks(album_id, offset: 0)
+    get("/albums/#{album_id}/tracks", offset: offset, limit: 50, market: user_market)
   end
 
   private
 
+  def user_market
+    @user_market ||= get("/me")["country"]
+  end
+
   def get(path, params = {})
     uri = URI("#{BASE_URL}#{path}")
-    uri.query = URI.encode_www_form(params) if params.any?
+    if params.any?
+      uri.query = params.map { |k, v|
+        "#{k}=#{URI.encode_www_form_component(v.to_s).gsub('%2C', ',')}"
+      }.join("&")
+    end
 
+    Rails.logger.info "SPOTIFY REQUEST: #{uri}"
     req = Net::HTTP::Get.new(uri)
     req["Authorization"] = "Bearer #{@token}"
 

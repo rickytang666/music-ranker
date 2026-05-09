@@ -16,31 +16,39 @@ class SpotifyImporterService
   end
 
   def import_artist_tracks(artist_id)
-    album_ids = fetch_all_album_ids(artist_id)
-    tracks = fetch_tracks_for_albums(album_ids)
+    albums = fetch_all_albums(artist_id)
+    tracks = fetch_tracks_for_albums(albums)
     upsert_songs(tracks)
   end
 
   private
 
-  def fetch_all_album_ids(artist_id)
-    ids = []
+  def fetch_all_albums(artist_id)
+    albums = []
     offset = 0
     loop do
       data = @client.artist_albums(artist_id, offset: offset)
-      ids += data["items"].map { |a| a["id"] }
+      albums += data["items"]
       break if data["next"].nil?
-      offset += 50
+      offset += data["items"].length
     end
-    ids
+    albums
   end
 
-  def fetch_tracks_for_albums(album_ids)
-    album_ids.each_slice(20).flat_map do |batch|
-      data = @client.albums(batch)
-      data["albums"].flat_map do |album|
-        album["tracks"]["items"].map { |t| serialize_track(t, album: album) }
+  def fetch_tracks_for_albums(albums)
+    albums.flat_map do |album|
+      tracks = []
+      offset = 0
+      loop do
+        data = @client.album_tracks(album["id"], offset: offset)
+        tracks += data["items"]
+        break if data["next"].nil?
+        offset += data["items"].length
       end
+      tracks.map { |t| serialize_track(t, album: album) }
+    rescue RuntimeError => e
+      Rails.logger.warn "skipping album #{album["id"]}: #{e.message}"
+      []
     end
   end
 

@@ -1,19 +1,21 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { auth } from '$lib/stores/auth.svelte';
+  import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
+  import { auth } from "$lib/stores/auth.svelte";
 
-	let { children } = $props();
+  let { children } = $props();
 
-	const publicRoutes = ['/login', '/auth/callback'];
+  const publicRoutes = ["/login", "/auth/callback"];
 
-	onMount(() => {
-		auth.init();
-		if (!auth.token && !publicRoutes.includes($page.url.pathname)) {
-			goto('/login');
-		}
-	});
+  // ssr is disabled, so localStorage is available here synchronously.
+  // must run before child layouts mount so their onMount sees a valid token.
+  auth.init();
+
+  $effect(() => {
+    if (!auth.token && !publicRoutes.includes($page.url.pathname)) {
+      goto("/login");
+    }
+  });
 </script>
 
 {@render children()}
