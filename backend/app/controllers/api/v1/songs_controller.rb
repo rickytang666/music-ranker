@@ -7,6 +7,7 @@ module Api
         songs = @ranking.ranking_songs
                         .includes(:song)
                         .order(elo_score: :desc)
+                        .sort_by { |rs| [-rs.elo_score, -(rs.song.release_date || "0").tr('-', '').to_i] }
                         .map do |rs|
           rs.song.as_json(only: [:id, :spotify_track_id, :title, :artist_name, :album_name, :album_art_url])
             .merge(elo_score: rs.elo_score, matchup_count: rs.matchup_count)

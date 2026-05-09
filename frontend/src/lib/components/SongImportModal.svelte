@@ -15,6 +15,7 @@
 		name: string;
 		artist_name: string;
 		image_url: string | null;
+		release_date?: string;
 	}
 
 	interface ArtistResult {
@@ -153,7 +154,7 @@
 				albumResults
 					.filter((a) => selectedItems.has(a.id))
 					.map((album) => {
-						const p = new URLSearchParams({ name: album.name, art: album.image_url ?? '' });
+						const p = new URLSearchParams({ name: album.name, art: album.image_url ?? '', release_date: album.release_date ?? '' });
 						return api.get<Track[]>(`/api/v1/spotify/albums/${album.id}/tracks?${p}`);
 					})
 			);

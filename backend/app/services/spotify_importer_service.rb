@@ -17,7 +17,8 @@ class SpotifyImporterService
         id: a["id"],
         name: a["name"],
         artist_name: a.dig("artists", 0, "name"),
-        image_url: a.dig("images", 0, "url")
+        image_url: a.dig("images", 0, "url"),
+        release_date: a["release_date"]
       }
     end
   end
@@ -35,7 +36,8 @@ class SpotifyImporterService
         id: a["id"],
         name: a["name"],
         artist_name: a.dig("artists", 0, "name"),
-        image_url: a.dig("images", 0, "url")
+        image_url: a.dig("images", 0, "url"),
+        release_date: a["release_date"]
       }
     end
   end
@@ -102,6 +104,7 @@ class SpotifyImporterService
         s.artist_name = t[:artist_name]
         s.album_name = t[:album_name]
         s.album_art_url = t[:album_art_url]
+        s.release_date = t[:release_date]
       end
     end
   end
@@ -113,7 +116,8 @@ class SpotifyImporterService
       title: track["name"],
       artist_name: track.dig("artists", 0, "name"),
       album_name: album&.dig("name"),
-      album_art_url: album&.dig("images", 0, "url")
+      album_art_url: album&.dig("images", 0, "url"),
+      release_date: album&.dig("release_date")
     }
   end
 end

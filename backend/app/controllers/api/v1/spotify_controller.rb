@@ -28,8 +28,9 @@ module Api
 
       def album_tracks
         album = {
-          "name"    => params[:name],
-          "images"  => params[:art].present? ? [{ "url" => params[:art] }] : []
+          "name"         => params[:name],
+          "images"       => params[:art].present? ? [{ "url" => params[:art] }] : [],
+          "release_date" => params[:release_date]
         }
         songs = importer.import_album_tracks(params[:id], album: album)
         render json: songs.map { |s| s.as_json(only: [:id, :spotify_track_id, :title, :artist_name, :album_name, :album_art_url]) }

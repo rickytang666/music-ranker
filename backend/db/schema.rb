@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_09_220329) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_09_221534) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -51,6 +51,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_09_220329) do
     t.string "album_name"
     t.string "artist_name", null: false
     t.datetime "created_at", null: false
+    t.string "release_date"
     t.string "spotify_track_id", null: false
     t.string "title", null: false
     t.datetime "updated_at", null: false
