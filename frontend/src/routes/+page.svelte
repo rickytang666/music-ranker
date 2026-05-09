@@ -1,2 +1,7 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script lang="ts">
+	import { auth } from '$lib/stores/auth.svelte';
+</script>
+
+<main>
+	<p>logged in{auth.user ? ` as ${auth.user.display_name}` : ''}</p>
+</main>

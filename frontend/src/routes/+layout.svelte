@@ -1,11 +1,19 @@
 <script lang="ts">
-	import favicon from '$lib/assets/favicon.svg';
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { auth } from '$lib/stores/auth.svelte';
 
 	let { children } = $props();
-</script>
 
-<svelte:head>
-	<link rel="icon" href={favicon} />
-</svelte:head>
+	const publicRoutes = ['/login', '/auth/callback'];
+
+	onMount(() => {
+		auth.init();
+		if (!auth.token && !publicRoutes.includes($page.url.pathname)) {
+			goto('/login');
+		}
+	});
+</script>
 
 {@render children()}
