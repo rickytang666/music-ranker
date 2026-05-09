@@ -6,6 +6,7 @@
 	import { rankings } from '$lib/stores/rankings.svelte';
 	import SongCard from '$lib/components/SongCard.svelte';
 	import SongImportModal from '$lib/components/SongImportModal.svelte';
+	import RankedList, { type RankedSong } from '$lib/components/RankedList.svelte';
 
 	interface Song {
 		id: number;
@@ -24,30 +25,40 @@
 	let ranking = $derived(rankings.list.find((r) => r.id === rankingId));
 
 	let matchup = $state<Matchup | null>(null);
-	let phase = $state<'loading' | 'ready' | 'picking' | 'empty' | 'error'>('loading');
+	let matchupPhase = $state<'loading' | 'ready' | 'picking' | 'empty' | 'error'>('loading');
+	let rankedSongs = $state<RankedSong[]>([]);
 	let importOpen = $state(false);
-	let songCount = $state(0);
 
-	// reload matchup when the ranking changes
 	$effect(() => {
-		if (rankingId) loadNext();
+		if (rankingId) {
+			loadNext();
+			loadSongs();
+		}
 	});
 
 	async function loadNext() {
-		phase = 'loading';
+		matchupPhase = 'loading';
 		try {
 			const result = await api.get<Matchup>(`/api/v1/rankings/${rankingId}/matchups/next`);
 			matchup = result;
-			phase = 'ready';
+			matchupPhase = 'ready';
 		} catch (err: unknown) {
 			const e = err as { status?: number };
-			phase = e?.status === 422 ? 'empty' : 'error';
+			matchupPhase = e?.status === 422 ? 'empty' : 'error';
+		}
+	}
+
+	async function loadSongs() {
+		try {
+			rankedSongs = await api.get<RankedSong[]>(`/api/v1/rankings/${rankingId}/songs`);
+		} catch {
+			// non-critical — list just stays stale
 		}
 	}
 
 	async function pick(winnerId: number) {
-		if (!matchup || phase !== 'ready') return;
-		phase = 'picking';
+		if (!matchup || matchupPhase !== 'ready') return;
+		matchupPhase = 'picking';
 		try {
 			await api.post(`/api/v1/rankings/${rankingId}/matchups`, {
 				matchup: {
@@ -56,9 +67,9 @@
 					song_b_id: matchup.song_b.id
 				}
 			});
-			await loadNext();
+			await Promise.all([loadNext(), loadSongs()]);
 		} catch {
-			phase = 'error';
+			matchupPhase = 'error';
 		}
 	}
 
@@ -66,14 +77,12 @@
 		loadNext();
 	}
 
-	function onSongsAdded(count: number) {
-		songCount += count;
-		// reload matchup — there may now be enough songs
-		loadNext();
+	async function onSongsAdded() {
+		await Promise.all([loadNext(), loadSongs()]);
 	}
 
 	function onKeydown(e: KeyboardEvent) {
-		if (!matchup || phase !== 'ready') return;
+		if (!matchup || matchupPhase !== 'ready') return;
 		if (e.key === 'ArrowLeft') pick(matchup.song_a.id);
 		if (e.key === 'ArrowRight') pick(matchup.song_b.id);
 		if (e.key === 's' || e.key === 'S') skip();
@@ -96,18 +105,18 @@
 	{/if}
 
 	<div class="cards-area">
-		{#if phase === 'loading' || phase === 'picking'}
+		{#if matchupPhase === 'loading' || matchupPhase === 'picking'}
 			<div class="state-msg">
 				<IconLoader2 size={24} class="spin" />
 			</div>
 
-		{:else if phase === 'empty'}
+		{:else if matchupPhase === 'empty'}
 			<div class="state-msg">
 				<p class="state-title">not enough songs</p>
-				<p class="state-sub">add at least 2 songs to start matching</p>
+				<p class="state-sub">add at least 2 songs using the + button</p>
 			</div>
 
-		{:else if phase === 'error'}
+		{:else if matchupPhase === 'error'}
 			<div class="state-msg">
 				<p class="state-title">something went wrong</p>
 				<button class="retry-btn" onclick={loadNext}>retry</button>
@@ -117,21 +126,21 @@
 			<SongCard
 				song={matchup.song_a}
 				tilt={-1.2}
-				disabled={phase !== 'ready'}
+				disabled={matchupPhase !== 'ready'}
 				onPick={() => pick(matchup!.song_a.id)}
 			/>
 			<SongCard
 				song={matchup.song_b}
 				tilt={1.2}
-				disabled={phase !== 'ready'}
+				disabled={matchupPhase !== 'ready'}
 				onPick={() => pick(matchup!.song_b.id)}
 			/>
 		{/if}
 	</div>
 
-	{#if phase === 'ready'}
+	{#if matchupPhase === 'ready'}
 		<div class="controls">
-			<button class="control-btn" onclick={skip} title="Skip (S)">
+			<button class="control-btn" onclick={skip}>
 				<IconArrowsShuffle size={14} />
 				Skip
 			</button>
@@ -140,13 +149,13 @@
 	{/if}
 </div>
 
-<!-- right: ranked list panel -->
+<!-- right: ranked list -->
 <aside class="right-panel">
 	<div class="panel-header">
 		<div class="panel-title">
 			<span class="title-text">Your ranking</span>
-			{#if songCount > 0}
-				<span class="song-count">{songCount} songs</span>
+			{#if rankedSongs.length > 0}
+				<span class="song-count">{rankedSongs.length} songs · sorted</span>
 			{/if}
 		</div>
 		<button class="add-songs-btn" onclick={() => (importOpen = true)} title="Add songs">
@@ -154,14 +163,12 @@
 		</button>
 	</div>
 
-	{#if songCount === 0}
+	{#if rankedSongs.length === 0}
 		<div class="empty-list">
 			<p>add songs to start ranking</p>
 		</div>
 	{:else}
-		<div class="list-placeholder">
-			<p class="sub">ranked list — next step</p>
-		</div>
+		<RankedList songs={rankedSongs} />
 	{/if}
 </aside>
 
@@ -285,7 +292,6 @@
 		letter-spacing: 0.5px;
 	}
 
-	/* right panel */
 	.right-panel {
 		width: 320px;
 		flex-shrink: 0;
@@ -350,19 +356,5 @@
 		letter-spacing: 0.3px;
 		text-align: center;
 		padding: 24px;
-	}
-
-	.list-placeholder {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.sub {
-		font-family: var(--font-mono);
-		font-size: 10px;
-		color: var(--muted);
-		letter-spacing: 0.3px;
 	}
 </style>
