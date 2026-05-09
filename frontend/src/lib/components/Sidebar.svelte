@@ -6,7 +6,8 @@
     IconPlus,
     IconCheck,
     IconX,
-    IconDots,
+    IconPencil,
+    IconTrash,
   } from "@tabler/icons-svelte";
   import { api } from "$lib/api";
   import { rankings, type Ranking } from "$lib/stores/rankings.svelte";
@@ -17,7 +18,6 @@
   let creating = $state(false);
   let newName = $state("");
   let saving = $state(false);
-  let menuId = $state<number | null>(null);
   let renamingId = $state<number | null>(null);
   let renameValue = $state("");
 
@@ -50,7 +50,6 @@
   function startRename(ranking: Ranking) {
     renamingId = ranking.id;
     renameValue = ranking.name;
-    menuId = null;
   }
 
   function cancelRename() {
@@ -72,7 +71,6 @@
   }
 
   async function deleteRanking(ranking: Ranking) {
-    menuId = null;
     if (!confirm(`Delete "${ranking.name}"? This cannot be undone.`)) return;
     try {
       await api.delete(`/api/v1/rankings/${ranking.id}`);
@@ -83,12 +81,6 @@
     }
   }
 </script>
-
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-{#if menuId !== null}
-  <div class="overlay" onclick={() => (menuId = null)}></div>
-{/if}
 
 <aside class="sidebar" class:collapsed>
   <div class="header">
@@ -141,20 +133,13 @@
       {:else}
         <div class="tab-row" class:active={ranking.id === activeId}>
           <a class="tab-link" href="/rankings/{ranking.id}">{ranking.name}</a>
-          <div class="tab-menu-wrap">
-            <button
-              class="tab-more icon-btn"
-              onclick={(e) => { e.preventDefault(); menuId = menuId === ranking.id ? null : ranking.id; }}
-              title="Options"
-            >
-              <IconDots size={13} />
+          <div class="tab-actions">
+            <button class="tab-icon-btn" onclick={() => startRename(ranking)} title="Rename">
+              <IconPencil size={12} />
             </button>
-            {#if menuId === ranking.id}
-              <div class="tab-menu">
-                <button class="menu-item" onclick={() => startRename(ranking)}>Rename</button>
-                <button class="menu-item danger" onclick={() => deleteRanking(ranking)}>Delete</button>
-              </div>
-            {/if}
+            <button class="tab-icon-btn danger" onclick={() => deleteRanking(ranking)} title="Delete">
+              <IconTrash size={12} />
+            </button>
           </div>
         </div>
       {/if}
@@ -209,12 +194,6 @@
 </aside>
 
 <style>
-  .overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 9;
-  }
-
   .sidebar {
     width: 220px;
     flex-shrink: 0;
@@ -292,9 +271,12 @@
   .tab-row.active .tab-link {
     color: var(--paper);
   }
-  .tab-row.active .tab-more {
-    border-color: rgba(255,255,255,0.25);
-    color: var(--paper);
+  .tab-row.active .tab-icon-btn {
+    color: rgba(255, 255, 255, 0.45);
+  }
+  .tab-row.active .tab-icon-btn:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background: none;
   }
 
   .tab-link {
@@ -308,48 +290,34 @@
     padding: 9px 0;
   }
 
-  .tab-menu-wrap {
-    position: relative;
+  .tab-actions {
+    display: flex;
+    gap: 0;
     flex-shrink: 0;
-  }
-
-  .tab-more {
     opacity: 0;
-    transition: opacity 0.1s;
+    transition: opacity 0.15s;
   }
-  .tab-row:hover .tab-more {
+  .tab-row:hover .tab-actions {
     opacity: 1;
   }
 
-  .tab-menu {
-    position: absolute;
-    left: 0;
-    top: calc(100% + 4px);
-    background: var(--paper);
-    border: var(--border);
-    border-radius: 6px;
-    padding: 4px;
-    min-width: 120px;
-    box-shadow: 3px 3px 0 0 rgba(0,0,0,0.06);
-    z-index: 10;
-  }
-
-  .menu-item {
-    display: block;
-    width: 100%;
-    text-align: left;
+  .tab-icon-btn {
     background: none;
     border: none;
-    border-radius: 4px;
-    padding: 7px 10px;
-    font-family: var(--font-serif);
-    font-size: 14px;
-    color: var(--ink);
+    border-radius: 3px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    color: rgba(26, 26, 26, 0.3);
+    flex-shrink: 0;
+    padding: 0;
+    transition: color 0.1s;
   }
-  .menu-item:hover { background: rgba(26,26,26,0.06); }
-  .menu-item.danger { color: #c0392b; }
-  .menu-item.danger:hover { background: rgba(192,57,43,0.07); }
+  .tab-icon-btn:hover { color: var(--ink); background: none; }
+  .tab-icon-btn.danger:hover { color: #c0392b; background: none; }
 
   .rename-row {
     padding: 6px 6px 6px 8px;

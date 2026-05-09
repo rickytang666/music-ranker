@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { IconPlus, IconLoader2, IconArrowsShuffle, IconShare } from '@tabler/icons-svelte';
+	import { IconPlus, IconLoader2, IconArrowsShuffle, IconShare, IconCheck } from '@tabler/icons-svelte';
 	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
@@ -213,7 +213,7 @@
 						title="Export"
 					>
 						{#if copyFeedback}
-							<span class="copied">copied!</span>
+							<IconCheck size={14} />
 						{:else}
 							<IconShare size={14} />
 						{/if}
@@ -425,12 +425,6 @@
 		color: var(--paper);
 	}
 
-	.copied {
-		font-family: var(--font-mono);
-		font-size: 8px;
-		letter-spacing: 0.3px;
-		white-space: nowrap;
-	}
 
 	.export-wrap {
 		position: relative;
