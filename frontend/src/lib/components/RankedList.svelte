@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { IconTrendingDown, IconTrendingUp, IconQuestionMark, IconX } from '@tabler/icons-svelte';
 	import { flagStore, type FlagType } from '$lib/stores/signals.svelte';
 
 	export interface RankedSong {
@@ -13,76 +14,18 @@
 
 	let { songs, onRemove }: { songs: RankedSong[]; onRemove?: (id: number) => void } = $props();
 
-	interface MenuState {
-		songId: number;
-		x: number;
-		y: number;
-	}
-
-	let menu = $state<MenuState | null>(null);
-
-	function onContextMenu(e: MouseEvent, songId: number) {
-		e.preventDefault();
-		// keep menu inside viewport
-		const menuW = 160;
-		const menuH = 120;
-		const x = e.clientX + menuW > window.innerWidth ? e.clientX - menuW : e.clientX;
-		const y = e.clientY + menuH > window.innerHeight ? e.clientY - menuH : e.clientY;
-		menu = { songId, x, y };
-	}
-
-	function pickFlag(type: FlagType) {
-		if (!menu) return;
-		flagStore.set(menu.songId, type);
-		menu = null;
-	}
-
-	function clearFlag() {
-		if (!menu) return;
-		flagStore.clear(menu.songId);
-		menu = null;
-	}
-
-	function dismiss() {
-		menu = null;
-	}
-
-	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') menu = null;
+	function toggleFlag(songId: number, type: FlagType) {
+		if (flagStore.get(songId)?.type === type) {
+			flagStore.clear(songId);
+		} else {
+			flagStore.set(songId, type);
+		}
 	}
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-{#if menu}
-	<div class="overlay" onclick={dismiss}></div>
-	<div class="context-menu" style="left: {menu.x}px; top: {menu.y}px">
-		<button class="menu-item" class:active={flagStore.get(menu.songId)?.type === 'overrated'} onclick={() => pickFlag('overrated')}>
-			Overrated
-		</button>
-		<button class="menu-item" class:active={flagStore.get(menu.songId)?.type === 'underrated'} onclick={() => pickFlag('underrated')}>
-			Underrated
-		</button>
-		<button class="menu-item" class:active={flagStore.get(menu.songId)?.type === 'unsure'} onclick={() => pickFlag('unsure')}>
-			Unsure
-		</button>
-		{#if flagStore.get(menu.songId)}
-			<div class="menu-divider"></div>
-			<button class="menu-item muted" onclick={clearFlag}>Clear flag</button>
-		{/if}
-		{#if onRemove}
-			<div class="menu-divider"></div>
-			<button class="menu-item danger" onclick={() => { onRemove!(menu!.songId); menu = null; }}>Remove</button>
-		{/if}
-	</div>
-{/if}
-
 <div class="list">
 	{#each songs as song, i (song.id)}
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="row" oncontextmenu={(e) => onContextMenu(e, song.id)}>
+		<div class="row">
 			<span class="rank">{i + 1}</span>
 
 			{#if song.album_art_url}
@@ -104,53 +47,43 @@
 				<span class="elo-label">elo</span>
 				<span class="matchup-count">{song.matchup_count}×</span>
 			</div>
+
+			<div class="actions">
+				<button
+					class="action-btn"
+					class:active={flagStore.get(song.id)?.type === 'underrated'}
+					onclick={() => toggleFlag(song.id, 'underrated')}
+					title="Underrated"
+				>
+					<IconTrendingUp size={13} />
+				</button>
+				<button
+					class="action-btn"
+					class:active={flagStore.get(song.id)?.type === 'overrated'}
+					onclick={() => toggleFlag(song.id, 'overrated')}
+					title="Overrated"
+				>
+					<IconTrendingDown size={13} />
+				</button>
+				<button
+					class="action-btn"
+					class:active={flagStore.get(song.id)?.type === 'unsure'}
+					onclick={() => toggleFlag(song.id, 'unsure')}
+					title="Unsure"
+				>
+					<IconQuestionMark size={13} />
+				</button>
+				{#if onRemove}
+					<button class="action-btn remove" onclick={() => onRemove!(song.id)} title="Remove">
+						<IconX size={13} />
+					</button>
+				{/if}
+			</div>
 		</div>
 	{/each}
 </div>
 
 <style>
-	.overlay {
-		position: fixed;
-		inset: 0;
-		z-index: 49;
-	}
-
-	.context-menu {
-		position: fixed;
-		z-index: 50;
-		background: var(--paper);
-		border: var(--border);
-		border-radius: 6px;
-		padding: 4px;
-		min-width: 148px;
-		box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.06);
-	}
-
-	.menu-item {
-		display: block;
-		width: 100%;
-		text-align: left;
-		background: none;
-		border: none;
-		border-radius: 4px;
-		padding: 8px 12px;
-		font-family: var(--font-serif);
-		font-size: 15px;
-		color: var(--ink);
-		cursor: pointer;
-	}
-	.menu-item:hover { background: rgba(26, 26, 26, 0.06); }
-	.menu-item.active { font-weight: 600; }
-	.menu-item.muted { color: var(--muted); font-size: 13px; }
-	.menu-item.danger { color: #c0392b; }
-	.menu-item.danger:hover { background: rgba(192,57,43,0.07); }
-
-	.menu-divider {
-		height: 1px;
-		background: rgba(26, 26, 26, 0.1);
-		margin: 4px 8px;
-	}
-
 	.list {
 		display: flex;
 		flex-direction: column;
@@ -168,7 +101,39 @@
 		user-select: none;
 	}
 	.row:last-child { border-bottom: none; }
-	.row:hover { background: rgba(26, 26, 26, 0.02); }
+
+	.actions {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		flex-shrink: 0;
+		opacity: 0;
+		transition: opacity 0.15s;
+	}
+	.row:hover .actions { opacity: 1; }
+
+	/* always visible on touch devices */
+	@media (hover: none) {
+		.actions { opacity: 1; }
+	}
+
+	.action-btn {
+		background: none;
+		border: none;
+		border-radius: 4px;
+		width: 22px;
+		height: 22px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		color: var(--muted);
+		padding: 0;
+		transition: color 0.1s, background 0.1s;
+	}
+	.action-btn:hover { color: var(--ink); background: rgba(26,26,26,0.06); }
+	.action-btn.active { color: var(--ink); }
+	.action-btn.remove:hover { color: #c0392b; background: rgba(192,57,43,0.07); }
 
 	.rank {
 		font-family: var(--font-serif);
