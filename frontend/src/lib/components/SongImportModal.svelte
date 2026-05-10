@@ -689,4 +689,15 @@
 		opacity: 0.35;
 		cursor: not-allowed;
 	}
+
+	@media (max-width: 640px) {
+		.overlay { align-items: flex-end; background: rgba(26, 26, 26, 0.5); }
+		.modal {
+			width: 100%;
+			max-width: 100%;
+			max-height: 92vh;
+			border-radius: 12px 12px 0 0;
+			border-bottom: none;
+		}
+	}
 </style>

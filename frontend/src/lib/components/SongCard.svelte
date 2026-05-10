@@ -99,4 +99,12 @@
 		background: #333;
 	}
 	.pick-btn:disabled { cursor: not-allowed; }
+
+	@media (max-width: 640px) {
+		.card { transform: none !important; }
+		.art { width: 160px; height: 160px; }
+		.meta { max-width: 200px; }
+		.title { font-size: 15px; max-width: 200px; }
+		.pick-btn { width: 160px; font-size: 15px; padding: 8px 0; }
+	}
 </style>

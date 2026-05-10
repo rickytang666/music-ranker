@@ -12,7 +12,11 @@
   import { api } from "$lib/api";
   import { rankings, type Ranking } from "$lib/stores/rankings.svelte";
 
-  let { activeId }: { activeId?: number } = $props();
+  let {
+    activeId,
+    drawerOpen = false,
+    onClose = () => {}
+  }: { activeId?: number; drawerOpen?: boolean; onClose?: () => void } = $props();
 
   let collapsed = $state(false);
   let creating = $state(false);
@@ -82,7 +86,7 @@
   }
 </script>
 
-<aside class="sidebar" class:collapsed>
+<aside class="sidebar" class:collapsed class:drawer-open={drawerOpen}>
   <div class="header">
     {#if !collapsed}
       <span class="label">Rankings</span>
@@ -209,6 +213,25 @@
     width: 56px;
     padding: 20px 10px;
     align-items: center;
+  }
+
+  @media (max-width: 640px) {
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100%;
+      z-index: 200;
+      width: 280px !important;
+      padding: 24px 16px !important;
+      align-items: initial !important;
+      transform: translateX(-100%);
+      transition: transform 0.2s ease;
+      box-shadow: none;
+    }
+    .sidebar.drawer-open {
+      transform: translateX(0);
+    }
   }
 
   .header {

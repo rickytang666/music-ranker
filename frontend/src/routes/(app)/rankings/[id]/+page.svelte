@@ -33,6 +33,7 @@
 	let importOpen = $state(false);
 	let exportOpen = $state(false);
 	let copyFeedback = $state(false);
+	let mobileTab = $state<'match' | 'ranking'>('match');
 
 	async function fetchExportText(): Promise<string> {
 		const res = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/rankings/${rankingId}/export`, {
@@ -153,8 +154,13 @@
 
 <svelte:window onkeydown={onKeydown} />
 
+<div class="mobile-tabs">
+	<button class="mobile-tab" class:active={mobileTab === 'match'} onclick={() => mobileTab = 'match'}>Match</button>
+	<button class="mobile-tab" class:active={mobileTab === 'ranking'} onclick={() => { mobileTab = 'ranking'; exportOpen = false; }}>Ranking</button>
+</div>
+
 <!-- center: matchup -->
-<div class="center">
+<div class="center" class:mobile-hidden={mobileTab !== 'match'}>
 	{#if ranking}
 		<div class="matchup-header">
 			<p class="label">which do you prefer?</p>
@@ -208,7 +214,7 @@
 </div>
 
 <!-- right: ranked list -->
-<aside class="right-panel">
+<aside class="right-panel" class:mobile-hidden={mobileTab !== 'ranking'}>
 	<div class="panel-header">
 		<div class="panel-title">
 			<span class="title-text">Your ranking</span>
@@ -496,5 +502,48 @@
 		letter-spacing: 0.3px;
 		text-align: center;
 		padding: 24px;
+	}
+
+	.mobile-tabs {
+		display: none;
+	}
+
+	@media (max-width: 640px) {
+		.mobile-hidden { display: none !important; }
+
+		.mobile-tabs {
+			display: flex;
+			border-bottom: var(--border);
+			flex-shrink: 0;
+		}
+		.mobile-tab {
+			flex: 1;
+			padding: 10px;
+			font-family: var(--font-mono);
+			font-size: 11px;
+			letter-spacing: 0.8px;
+			text-transform: uppercase;
+			border: none;
+			border-bottom: 2px solid transparent;
+			background: none;
+			cursor: pointer;
+			color: var(--muted);
+			margin-bottom: -1px;
+		}
+		.mobile-tab.active {
+			color: var(--ink);
+			border-bottom-color: var(--ink);
+		}
+
+		.center {
+			padding: 20px 16px;
+			border-right: none;
+			gap: 20px;
+		}
+		.ranking-name { font-size: 22px; }
+		.cards-area { gap: 16px; }
+		.key-hint { display: none; }
+
+		.right-panel { width: 100%; flex: 1; }
 	}
 </style>
