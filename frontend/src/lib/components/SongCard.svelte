@@ -1,17 +1,25 @@
 <script lang="ts">
+	import { IconTrendingDown, IconTrendingUp, IconQuestionMark, IconX } from '@tabler/icons-svelte';
 	import type { BaseSong } from '$lib/types';
+	import type { FlagType } from '$lib/stores/signals.svelte';
 
 	let {
 		song,
 		tilt,
 		disabled,
-		onPick
+		flag,
+		onPick,
+		onClearFlag
 	}: {
 		song: BaseSong;
 		tilt: number;
 		disabled: boolean;
+		flag?: FlagType;
 		onPick: () => void;
+		onClearFlag?: () => void;
 	} = $props();
+
+	const flagIcon = { overrated: IconTrendingDown, underrated: IconTrendingUp, unsure: IconQuestionMark };
 </script>
 
 <div class="card" style="transform: rotate({tilt}deg)" class:disabled>
@@ -20,10 +28,20 @@
 	{:else}
 		<div class="art placeholder"></div>
 	{/if}
+
 	<div class="meta">
 		<p class="title">{song.title}</p>
 		<p class="artist">{song.artist_name}</p>
+		{#if flag}
+			{@const Icon = flagIcon[flag]}
+			<button class="flag-badge" onclick={onClearFlag}>
+				<Icon size={11} />
+				{flag}
+				<IconX size={10} />
+			</button>
+		{/if}
 	</div>
+
 	<button class="pick-btn" onclick={onPick} {disabled}>Pick ♥</button>
 </div>
 
@@ -54,7 +72,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 4px;
+		gap: 6px;
 		max-width: 240px;
 	}
 
@@ -77,6 +95,23 @@
 		text-transform: uppercase;
 	}
 
+	.flag-badge {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		padding: 3px 8px;
+		border: var(--border);
+		border-radius: 20px;
+		background: none;
+		font-family: var(--font-mono);
+		font-size: 10px;
+		letter-spacing: 0.5px;
+		color: var(--ink);
+		cursor: pointer;
+		transition: background 0.1s;
+	}
+	.flag-badge:hover { background: rgba(26,26,26,0.06); }
+
 	.pick-btn {
 		border: var(--border);
 		border-radius: 6px;
@@ -89,9 +124,7 @@
 		width: 200px;
 		margin-top: 4px;
 	}
-	.pick-btn:hover:not(:disabled) {
-		background: #333;
-	}
+	.pick-btn:hover:not(:disabled) { background: #333; }
 	.pick-btn:disabled { cursor: not-allowed; }
 
 	@media (max-width: 640px) {
