@@ -4,8 +4,6 @@
 	import type { RankedSong } from '$lib/types';
 	import AlbumArt from './AlbumArt.svelte';
 
-	export type { RankedSong };
-
 	let { songs, onRemove }: { songs: RankedSong[]; onRemove?: (id: number) => void } = $props();
 
 	function toggleFlag(songId: number, type: FlagType) {

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from "$app/stores";
-  import { onMount, untrack } from "svelte";
+  import { untrack } from "svelte";
   import {
     IconPlus,
     IconLoader2,
@@ -76,6 +76,9 @@
   $effect(() => {
     if (rankingId) {
       untrack(() => {
+        matchup = null;
+        rankedSongs = [];
+        shownPairs = [];
         loadNext();
         loadSongs();
       });
@@ -177,11 +180,6 @@
     if (e.key === "s" || e.key === "S") skip();
   }
 
-  onMount(() => {
-    return () => {
-      matchup = null;
-    };
-  });
 </script>
 
 <svelte:window onkeydown={onKeydown} />
