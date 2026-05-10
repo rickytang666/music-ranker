@@ -100,7 +100,8 @@ class MatchupSelectorService
   end
 
   def recent_played_pairs
-    @ranking.matchups.pluck(:song_a_id, :song_b_id)
+    @ranking.matchups.order(played_at: :desc).limit(500)
+            .pluck(:song_a_id, :song_b_id)
             .map { |a, b| [ a, b ].sort }
             .to_set
   end

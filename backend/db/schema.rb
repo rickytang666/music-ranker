@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_09_221534) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_10_210338) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -24,6 +24,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_09_221534) do
     t.bigint "winner_id", null: false
     t.index ["ranking_id", "played_at"], name: "index_matchups_on_ranking_id_and_played_at"
     t.index ["ranking_id"], name: "index_matchups_on_ranking_id"
+    t.index ["song_a_id"], name: "index_matchups_on_song_a_id"
+    t.index ["song_b_id"], name: "index_matchups_on_song_b_id"
+    t.index ["winner_id"], name: "index_matchups_on_winner_id"
   end
 
   create_table "ranking_songs", force: :cascade do |t|

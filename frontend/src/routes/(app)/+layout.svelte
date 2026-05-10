@@ -6,12 +6,20 @@
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { IconMenu2 } from '@tabler/icons-svelte';
 
+	const RANKINGS_CACHE = 'rankings_cache';
+
 	let { children } = $props();
 	let drawerOpen = $state(false);
 
 	let activeId = $derived(
 		$page.params.id ? parseInt($page.params.id) : undefined
 	);
+
+	// populate sidebar immediately from cache, then refresh from API
+	try {
+		const cached = localStorage.getItem(RANKINGS_CACHE);
+		if (cached) rankings.set(JSON.parse(cached));
+	} catch {}
 
 	// close drawer on navigation
 	$effect(() => {
@@ -23,6 +31,7 @@
 		try {
 			const data = await api.get<typeof rankings.list>('/api/v1/rankings');
 			rankings.set(data);
+			localStorage.setItem(RANKINGS_CACHE, JSON.stringify(data));
 		} catch {}
 	});
 </script>
