@@ -37,22 +37,36 @@ class MatchupSelectorService
 
     return nil if candidates.empty?
 
-    song_b_rs = weighted_sample(candidates)
+    song_b_rs = weighted_sample_opponent(candidates, song_a_rs)
     { song_a: song_a_rs.song, song_b: song_b_rs.song }
   end
 
   private
 
   def weighted_sample(ranking_songs)
-    weights = ranking_songs.map { |rs| 1.0 / (rs.matchup_count + 1) }
-    total   = weights.sum
-    r       = rand * total
-    cumulative = 0.0
-    ranking_songs.each_with_index do |rs, i|
-      cumulative += weights[i]
-      return rs if cumulative >= r
+    sample_by_weights(ranking_songs) { |rs| 1.0 / (rs.matchup_count + 1) }
+  end
+
+  # combines low-matchup preference with ELO proximity
+  def weighted_sample_opponent(candidates, song_a_rs)
+    sample_by_weights(candidates) do |rs|
+      matchup_w  = 1.0 / (rs.matchup_count + 1)
+      elo_diff   = (rs.elo_score - song_a_rs.elo_score).abs
+      proximity_w = Math.exp(-elo_diff / 400.0)
+      matchup_w * proximity_w
     end
-    ranking_songs.last
+  end
+
+  def sample_by_weights(items, &weight_fn)
+    weights    = items.map(&weight_fn)
+    total      = weights.sum
+    r          = rand * total
+    cumulative = 0.0
+    items.each_with_index do |item, i|
+      cumulative += weights[i]
+      return item if cumulative >= r
+    end
+    items.last
   end
 
   def valid_opponents(song_a_rs, all_rs, recent_pairs)
