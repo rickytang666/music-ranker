@@ -1,14 +1,8 @@
 <script lang="ts">
-	import { IconSearch, IconX, IconCheck, IconLoader2 } from '@tabler/icons-svelte';
+	import { IconSearch, IconX, IconLoader2 } from '@tabler/icons-svelte';
 	import { api } from '$lib/api';
-
-	interface Track {
-		id: number;
-		title: string;
-		artist_name: string;
-		album_name: string | null;
-		album_art_url: string | null;
-	}
+	import type { BaseSong } from '$lib/types';
+	import ImportItem from './ImportItem.svelte';
 
 	interface AlbumResult {
 		id: string;
@@ -46,12 +40,12 @@
 	let loadingMsg = $state('loading…');
 	let saving = $state(false);
 
-	let songResults = $state<Track[]>([]);
+	let songResults = $state<BaseSong[]>([]);
 	let albumResults = $state<AlbumResult[]>([]);
 	let artistResults = $state<ArtistResult[]>([]);
 	let selectedItems = $state(new Set<string>());
 
-	let tracks = $state<Track[]>([]);
+	let tracks = $state<BaseSong[]>([]);
 	let selectedTracks = $state(new Set<number>());
 
 	let searchTimer: ReturnType<typeof setTimeout>;
@@ -89,7 +83,7 @@
 		selectedTracks = new Set();
 		try {
 			if (mode === 'song') {
-				const r = await api.get<Track[]>(`/api/v1/spotify/search/tracks?q=${encodeURIComponent(q)}`);
+				const r = await api.get<BaseSong[]>(`/api/v1/spotify/search/tracks?q=${encodeURIComponent(q)}`);
 				songResults = r;
 				phase = r.length ? 'results' : 'no-results';
 			} else if (mode === 'album') {
@@ -155,7 +149,7 @@
 					.filter((a) => selectedItems.has(a.id))
 					.map((album) => {
 						const p = new URLSearchParams({ name: album.name, art: album.image_url ?? '', release_date: album.release_date ?? '' });
-						return api.get<Track[]>(`/api/v1/spotify/albums/${album.id}/tracks?${p}`);
+						return api.get<BaseSong[]>(`/api/v1/spotify/albums/${album.id}/tracks?${p}`);
 					})
 			);
 			const seen = new Set<number>();
@@ -173,11 +167,7 @@
 	}
 
 	function backToResults() {
-		if (phase === 'tracks' && mode === 'artist') {
-			phase = 'discography';
-		} else {
-			phase = 'results';
-		}
+		phase = mode === 'artist' ? 'discography' : 'results';
 		tracks = [];
 		selectedTracks = new Set();
 	}
@@ -189,8 +179,7 @@
 	}
 
 	async function addSongs() {
-		const ids =
-			phase === 'tracks' ? [...selectedTracks] : [...selectedTracks];
+		const ids = [...selectedTracks];
 		if (!ids.length || saving) return;
 		saving = true;
 		try {
@@ -261,35 +250,23 @@
 			{#if phase === 'idle'}
 				<p class="hint">search for a {mode} to import</p>
 
-			{:else if phase === 'searching'}
+			{:else if phase === 'searching' || phase === 'loading'}
 				<div class="spinner-row">
 					<IconLoader2 size={18} class="spin" />
-					<span>searching…</span>
-				</div>
-
-			{:else if phase === 'loading'}
-				<div class="spinner-row">
-					<IconLoader2 size={18} class="spin" />
-					<span>{loadingMsg}</span>
+					<span>{phase === 'searching' ? 'searching…' : loadingMsg}</span>
 				</div>
 
 			{:else if phase === 'results' && mode === 'song'}
 				<ul class="item-list">
 					{#each songResults as track (track.id)}
-						{@const sel = selectedTracks.has(track.id)}
 						<li>
-							<button class="item-row" class:selected={sel} onclick={() => toggleTrack(track.id)}>
-								{#if track.album_art_url}
-									<img src={track.album_art_url} alt={track.album_name ?? ''} class="item-img square" />
-								{:else}
-									<div class="item-img square placeholder"></div>
-								{/if}
-								<div class="item-info">
-									<span class="item-name">{track.title}</span>
-									<span class="item-sub">{track.artist_name}{track.album_name ? ` · ${track.album_name}` : ''}</span>
-								</div>
-								<div class="check" class:visible={sel}><IconCheck size={12} /></div>
-							</button>
+							<ImportItem
+								imageUrl={track.album_art_url}
+								name={track.title}
+								sub={track.artist_name + (track.album_name ? ` · ${track.album_name}` : '')}
+								selected={selectedTracks.has(track.id)}
+								onSelect={() => toggleTrack(track.id)}
+							/>
 						</li>
 					{/each}
 				</ul>
@@ -297,20 +274,14 @@
 			{:else if phase === 'results' && mode === 'album'}
 				<ul class="item-list">
 					{#each albumResults as album (album.id)}
-						{@const sel = selectedItems.has(album.id)}
 						<li>
-							<button class="item-row" class:selected={sel} onclick={() => toggleItem(album.id)}>
-								{#if album.image_url}
-									<img src={album.image_url} alt={album.name} class="item-img square" />
-								{:else}
-									<div class="item-img square placeholder"></div>
-								{/if}
-								<div class="item-info">
-									<span class="item-name">{album.name}</span>
-									<span class="item-sub">{album.artist_name}</span>
-								</div>
-								<div class="check" class:visible={sel}><IconCheck size={12} /></div>
-							</button>
+							<ImportItem
+								imageUrl={album.image_url}
+								name={album.name}
+								sub={album.artist_name}
+								selected={selectedItems.has(album.id)}
+								onSelect={() => toggleItem(album.id)}
+							/>
 						</li>
 					{/each}
 				</ul>
@@ -319,23 +290,19 @@
 				<ul class="item-list">
 					{#each artistResults as artist (artist.id)}
 						<li>
-							<button class="item-row" onclick={() => loadDiscography(artist.id)}>
-								{#if artist.image_url}
-									<img src={artist.image_url} alt={artist.name} class="item-img round" />
-								{:else}
-									<div class="item-img round placeholder"></div>
-								{/if}
-								<div class="item-info">
-									<span class="item-name">{artist.name}</span>
-								</div>
-								<span class="item-nav">→</span>
-							</button>
+							<ImportItem
+								imageUrl={artist.image_url}
+								imageShape="round"
+								name={artist.name}
+								variant="navigate"
+								onSelect={() => loadDiscography(artist.id)}
+							/>
 						</li>
 					{/each}
 				</ul>
 
 			{:else if phase === 'discography'}
-				<div class="tracks-header">
+				<div class="list-header">
 					<button class="text-btn" onclick={backToArtistResults}>← back</button>
 					<button class="text-btn" onclick={toggleAllItems}>
 						{selectedItems.size === albumResults.length ? 'deselect all' : 'select all'}
@@ -343,26 +310,20 @@
 				</div>
 				<ul class="item-list">
 					{#each albumResults as album (album.id)}
-						{@const sel = selectedItems.has(album.id)}
 						<li>
-							<button class="item-row" class:selected={sel} onclick={() => toggleItem(album.id)}>
-								{#if album.image_url}
-									<img src={album.image_url} alt={album.name} class="item-img square" />
-								{:else}
-									<div class="item-img square placeholder"></div>
-								{/if}
-								<div class="item-info">
-									<span class="item-name">{album.name}</span>
-									<span class="item-sub">{album.artist_name}</span>
-								</div>
-								<div class="check" class:visible={sel}><IconCheck size={12} /></div>
-							</button>
+							<ImportItem
+								imageUrl={album.image_url}
+								name={album.name}
+								sub={album.artist_name}
+								selected={selectedItems.has(album.id)}
+								onSelect={() => toggleItem(album.id)}
+							/>
 						</li>
 					{/each}
 				</ul>
 
 			{:else if phase === 'tracks'}
-				<div class="tracks-header">
+				<div class="list-header">
 					<button class="text-btn" onclick={backToResults}>← back</button>
 					<button class="text-btn" onclick={toggleAllTracks}>
 						{selectedTracks.size === tracks.length ? 'deselect all' : 'select all'}
@@ -370,20 +331,14 @@
 				</div>
 				<ul class="item-list">
 					{#each tracks as track (track.id)}
-						{@const sel = selectedTracks.has(track.id)}
 						<li>
-							<button class="item-row" class:selected={sel} onclick={() => toggleTrack(track.id)}>
-								{#if track.album_art_url}
-									<img src={track.album_art_url} alt={track.album_name ?? ''} class="item-img square" />
-								{:else}
-									<div class="item-img square placeholder"></div>
-								{/if}
-								<div class="item-info">
-									<span class="item-name">{track.title}</span>
-									<span class="item-sub">{track.artist_name}{track.album_name ? ` · ${track.album_name}` : ''}</span>
-								</div>
-								<div class="check" class:visible={sel}><IconCheck size={12} /></div>
-							</button>
+							<ImportItem
+								imageUrl={track.album_art_url}
+								name={track.title}
+								sub={track.artist_name + (track.album_name ? ` · ${track.album_name}` : '')}
+								selected={selectedTracks.has(track.id)}
+								onSelect={() => toggleTrack(track.id)}
+							/>
 						</li>
 					{/each}
 				</ul>
@@ -407,9 +362,7 @@
 				{/if}
 			</span>
 			{#if canLoad}
-				<button class="add-btn" onclick={loadTracks}>
-					Load tracks →
-				</button>
+				<button class="add-btn" onclick={loadTracks}>Load tracks →</button>
 			{:else}
 				<button class="add-btn" onclick={addSongs} disabled={!canAdd || saving}>
 					{saving ? 'adding…' : selectedTracks.size > 0 ? `Add ${selectedTracks.size} songs` : 'Add songs'}
@@ -457,10 +410,7 @@
 		gap: 8px;
 	}
 
-	.modal-title {
-		font-family: var(--font-serif);
-		font-size: 20px;
-	}
+	.modal-title { font-family: var(--font-serif); font-size: 20px; }
 
 	.ranking-name {
 		font-family: var(--font-mono);
@@ -501,10 +451,7 @@
 		color: var(--muted);
 		margin-bottom: -1px;
 	}
-	.mode-tab.active {
-		color: var(--ink);
-		border-bottom-color: var(--ink);
-	}
+	.mode-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
 
 	.search-row {
 		display: flex;
@@ -526,11 +473,7 @@
 		outline: none;
 	}
 
-	.content {
-		flex: 1;
-		overflow-y: auto;
-		padding: 12px 0;
-	}
+	.content { flex: 1; overflow-y: auto; padding: 12px 0; }
 
 	.hint {
 		font-family: var(--font-mono);
@@ -557,94 +500,13 @@
 	@keyframes spin { to { transform: rotate(360deg); } }
 
 	ul { list-style: none; }
-
 	.item-list { padding: 0 8px; }
 
-	.item-row {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		width: 100%;
-		padding: 8px 12px;
-		background: none;
-		border: none;
-		border-radius: 6px;
-		cursor: pointer;
-		text-align: left;
-		color: var(--ink);
-	}
-	.item-row:hover { background: rgba(26, 26, 26, 0.04); }
-	.item-row.selected { background: rgba(26, 26, 26, 0.06); }
-
-	.item-img {
-		width: 38px;
-		height: 38px;
-		object-fit: cover;
-		flex-shrink: 0;
-	}
-	.item-img.square { border-radius: 3px; border: 1px solid rgba(26,26,26,0.1); }
-	.item-img.round { border-radius: 50%; }
-	.item-img.placeholder {
-		background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(0,0,0,0.06) 5px 6px);
-		border: var(--border);
-	}
-
-	.item-info {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 3px;
-		min-width: 0;
-	}
-
-	.item-name {
-		font-family: var(--font-serif);
-		font-size: 15px;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.item-sub {
-		font-family: var(--font-mono);
-		font-size: 10px;
-		color: var(--muted);
-		letter-spacing: 0.3px;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.item-nav {
-		font-family: var(--font-mono);
-		font-size: 14px;
-		color: var(--muted);
-		flex-shrink: 0;
-	}
-
-	.check {
-		width: 20px;
-		height: 20px;
-		border: var(--border);
-		border-radius: 4px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-		opacity: 0;
-	}
-	.check.visible {
-		background: var(--ink);
-		color: var(--paper);
-		opacity: 1;
-	}
-
-	.tracks-header {
+	.list-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		padding: 4px 20px 10px;
-		flex-shrink: 0;
 	}
 
 	.text-btn {
@@ -685,10 +547,7 @@
 		font-size: 15px;
 		cursor: pointer;
 	}
-	.add-btn:disabled {
-		opacity: 0.35;
-		cursor: not-allowed;
-	}
+	.add-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 	@media (max-width: 640px) {
 		.overlay { align-items: flex-end; background: rgba(26, 26, 26, 0.5); }

@@ -3,25 +3,18 @@
 	import { onMount, untrack } from 'svelte';
 	import { IconPlus, IconLoader2, IconArrowsShuffle, IconShare, IconCheck, IconRotate } from '@tabler/icons-svelte';
 	import { PUBLIC_API_BASE_URL } from '$env/static/public';
-	import { api } from '$lib/api';
+	import { api, ApiError } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { rankings } from '$lib/stores/rankings.svelte';
 	import { flagStore } from '$lib/stores/signals.svelte';
+	import type { BaseSong, RankedSong } from '$lib/types';
 	import SongCard from '$lib/components/SongCard.svelte';
 	import SongImportModal from '$lib/components/SongImportModal.svelte';
-	import RankedList, { type RankedSong } from '$lib/components/RankedList.svelte';
-
-	interface Song {
-		id: number;
-		title: string;
-		artist_name: string;
-		album_name: string | null;
-		album_art_url: string | null;
-	}
+	import RankedList from '$lib/components/RankedList.svelte';
 
 	interface Matchup {
-		song_a: Song;
-		song_b: Song;
+		song_a: BaseSong;
+		song_b: BaseSong;
 	}
 
 	let rankingId = $derived(parseInt($page.params.id ?? '0'));
@@ -93,8 +86,7 @@
 			matchup = result;
 			matchupPhase = 'ready';
 		} catch (err: unknown) {
-			const e = err as { status?: number };
-			matchupPhase = e?.status === 422 ? 'empty' : 'error';
+			matchupPhase = err instanceof ApiError && err.status === 422 ? 'empty' : 'error';
 		}
 	}
 

@@ -1,6 +1,17 @@
 import { PUBLIC_API_BASE_URL } from '$env/static/public';
 import { auth } from '$lib/stores/auth.svelte';
 
+export class ApiError extends Error {
+	status: number;
+	body: Record<string, unknown>;
+
+	constructor(status: number, body: Record<string, unknown>) {
+		super((body.error as string) ?? `HTTP ${status}`);
+		this.status = status;
+		this.body = body;
+	}
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
@@ -15,7 +26,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 	if (!res.ok) {
 		const body = await res.json().catch(() => ({}));
-		throw { status: res.status, ...body };
+		throw new ApiError(res.status, body);
 	}
 
 	if (res.status === 204) return undefined as T;

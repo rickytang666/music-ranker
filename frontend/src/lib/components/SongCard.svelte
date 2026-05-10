@@ -1,11 +1,5 @@
 <script lang="ts">
-	interface Song {
-		id: number;
-		title: string;
-		artist_name: string;
-		album_name: string | null;
-		album_art_url: string | null;
-	}
+	import type { BaseSong } from '$lib/types';
 
 	let {
 		song,
@@ -13,7 +7,7 @@
 		disabled,
 		onPick
 	}: {
-		song: Song;
+		song: BaseSong;
 		tilt: number;
 		disabled: boolean;
 		onPick: () => void;

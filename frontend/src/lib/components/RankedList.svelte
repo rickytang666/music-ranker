@@ -1,16 +1,10 @@
 <script lang="ts">
 	import { IconTrendingDown, IconTrendingUp, IconQuestionMark, IconX } from '@tabler/icons-svelte';
 	import { flagStore, type FlagType } from '$lib/stores/signals.svelte';
+	import type { RankedSong } from '$lib/types';
+	import AlbumArt from './AlbumArt.svelte';
 
-	export interface RankedSong {
-		id: number;
-		title: string;
-		artist_name: string;
-		album_name: string | null;
-		album_art_url: string | null;
-		elo_score: number;
-		matchup_count: number;
-	}
+	export type { RankedSong };
 
 	let { songs, onRemove }: { songs: RankedSong[]; onRemove?: (id: number) => void } = $props();
 
@@ -28,11 +22,7 @@
 		<div class="row">
 			<span class="rank">{i + 1}</span>
 
-			{#if song.album_art_url}
-				<img src={song.album_art_url} alt={song.album_name ?? song.title} class="art" />
-			{:else}
-				<div class="art placeholder"></div>
-			{/if}
+			<AlbumArt src={song.album_art_url} alt={song.album_name ?? song.title} size={36} />
 
 			<div class="meta">
 				<span class="title">{song.title}</span>
@@ -142,19 +132,6 @@
 		text-align: right;
 		flex-shrink: 0;
 		color: var(--muted);
-	}
-
-	.art {
-		width: 36px;
-		height: 36px;
-		border-radius: 3px;
-		object-fit: cover;
-		flex-shrink: 0;
-		border: 1px solid rgba(26, 26, 26, 0.12);
-	}
-	.art.placeholder {
-		background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(0,0,0,0.06) 5px 6px);
-		border: var(--border);
 	}
 
 	.meta {
