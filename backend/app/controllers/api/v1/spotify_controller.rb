@@ -1,6 +1,7 @@
 module Api
   module V1
     class SpotifyController < BaseController
+      rescue_from SpotifyClient::RateLimitError, with: :rate_limited
       def search_artists
         results = importer.search_artists(params.require(:q))
         render json: results
@@ -40,6 +41,10 @@ module Api
 
       def importer
         @importer ||= SpotifyImporterService.new(current_user)
+      end
+
+      def rate_limited(err)
+        render json: { error: err.message }, status: :too_many_requests
       end
     end
   end
