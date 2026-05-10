@@ -9,6 +9,7 @@
     IconPencil,
     IconTrash,
   } from "@tabler/icons-svelte";
+  import { onMount } from "svelte";
   import { api } from "$lib/api";
   import { rankings, type Ranking } from "$lib/stores/rankings.svelte";
 
@@ -19,6 +20,16 @@
   }: { activeId?: number; drawerOpen?: boolean; onClose?: () => void } = $props();
 
   let collapsed = $state(false);
+  let isMobile = $state(false);
+  let effectiveCollapsed = $derived(collapsed && !isMobile);
+
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    isMobile = mq.matches;
+    const handler = (e: MediaQueryListEvent) => { isMobile = e.matches; };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  });
   let creating = $state(false);
   let newName = $state("");
   let saving = $state(false);
@@ -86,7 +97,7 @@
   }
 </script>
 
-<aside class="sidebar" class:collapsed class:drawer-open={drawerOpen}>
+<aside class="sidebar" class:collapsed={effectiveCollapsed} class:drawer-open={drawerOpen}>
   <div class="header">
     {#if !collapsed}
       <span class="label">Rankings</span>
@@ -96,7 +107,7 @@
       onclick={() => (collapsed = !collapsed)}
       title={collapsed ? "Expand" : "Collapse"}
     >
-      {#if collapsed}
+      {#if effectiveCollapsed}
         <IconChevronRight size={16} />
       {:else}
         <IconChevronLeft size={16} />
@@ -106,7 +117,7 @@
 
   <nav class="tabs">
     {#each rankings.list as ranking (ranking.id)}
-      {#if collapsed}
+      {#if effectiveCollapsed}
         <a
           class="glyph-tab"
           class:active={ranking.id === activeId}
@@ -151,7 +162,7 @@
   </nav>
 
   <div class="footer">
-    {#if collapsed}
+    {#if effectiveCollapsed}
       <button
         class="glyph-add"
         onclick={() => {
@@ -222,16 +233,15 @@
       top: 0;
       height: 100%;
       z-index: 200;
-      width: 280px !important;
-      padding: 24px 16px !important;
-      align-items: initial !important;
+      width: 280px;
+      padding: 24px 16px;
       transform: translateX(-100%);
       transition: transform 0.2s ease;
-      box-shadow: none;
     }
     .sidebar.drawer-open {
       transform: translateX(0);
     }
+    .header .icon-btn { display: none; }
   }
 
   .header {
