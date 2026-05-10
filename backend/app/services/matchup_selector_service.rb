@@ -1,14 +1,15 @@
 class MatchupSelectorService
-  def self.call(ranking, signals = {})
-    new(ranking, signals).call
+  def self.call(ranking, signals = {}, excluded_pairs: [])
+    new(ranking, signals, excluded_pairs).call
   end
 
-  def initialize(ranking, signals)
+  def initialize(ranking, signals, excluded_pairs = [])
     @ranking        = ranking
     @overrated_ids  = (signals[:overrated_ids]  || []).map(&:to_i)
     @underrated_ids = (signals[:underrated_ids] || []).map(&:to_i)
     @unsure_ids     = (signals[:unsure_ids]     || []).map(&:to_i)
     @all_flagged    = @overrated_ids + @underrated_ids + @unsure_ids
+    @excluded_pairs = excluded_pairs.map { |p| p.map(&:to_i).sort }
   end
 
   def call
@@ -26,7 +27,7 @@ class MatchupSelectorService
 
     # fallback 1: relax recency
     if candidates.empty?
-      candidates = ranking_songs.reject { |rs| rs == song_a_rs || violates_constraint?(song_a_rs, rs) }
+      candidates = ranking_songs.reject { |rs| rs == song_a_rs || violates_constraint?(song_a_rs, rs) || excluded_pair?(song_a_rs.song_id, rs.song_id) }
     end
 
     # fallback 2: relax everything
@@ -36,7 +37,7 @@ class MatchupSelectorService
 
     return nil if candidates.empty?
 
-    song_b_rs = candidates.sample
+    song_b_rs = weighted_sample(candidates)
     { song_a: song_a_rs.song, song_b: song_b_rs.song }
   end
 
@@ -58,8 +59,13 @@ class MatchupSelectorService
     all_rs.reject do |rs|
       rs == song_a_rs ||
         recently_played?(song_a_rs.song_id, rs.song_id, recent_pairs) ||
-        violates_constraint?(song_a_rs, rs)
+        violates_constraint?(song_a_rs, rs) ||
+        excluded_pair?(song_a_rs.song_id, rs.song_id)
     end
+  end
+
+  def excluded_pair?(id_a, id_b)
+    @excluded_pairs.include?([ id_a, id_b ].sort)
   end
 
   def violates_constraint?(song_a_rs, opponent_rs)

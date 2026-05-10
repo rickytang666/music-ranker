@@ -5,7 +5,11 @@ module Api
       before_action :set_ranking
 
       def next
-        result = MatchupSelectorService.call(@ranking, signal_params)
+        excluded = params[:skip_pairs].to_s.split(";").filter_map do |pair|
+          ids = pair.split(",").map(&:to_i)
+          ids.length == 2 ? ids : nil
+        end
+        result = MatchupSelectorService.call(@ranking, signal_params, excluded_pairs: excluded)
         return render json: { error: "not enough songs" }, status: :unprocessable_entity unless result
 
         render json: {

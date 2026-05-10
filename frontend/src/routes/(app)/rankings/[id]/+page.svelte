@@ -30,6 +30,7 @@
 	let matchup = $state<Matchup | null>(null);
 	let matchupPhase = $state<'loading' | 'ready' | 'picking' | 'empty' | 'error'>('loading');
 	let rankedSongs = $state<RankedSong[]>([]);
+	let shownPairs = $state<string[]>([]);
 	let importOpen = $state(false);
 	let exportOpen = $state(false);
 	let copyFeedback = $state(false);
@@ -73,10 +74,22 @@
 		}
 	});
 
+	function nextUrl() {
+		const parts: string[] = [];
+		const flagQs = flagStore.toQueryString();
+		if (flagQs) parts.push(flagQs.slice(1));
+		if (shownPairs.length > 0) parts.push(`skip_pairs=${shownPairs.join(';')}`);
+		return `/api/v1/rankings/${rankingId}/matchups/next${parts.length ? `?${parts.join('&')}` : ''}`;
+	}
+
 	async function loadNext() {
+		if (matchup) {
+			const pair = [matchup.song_a.id, matchup.song_b.id].sort((a, b) => a - b).join(',');
+			shownPairs = [...shownPairs.slice(-9), pair];
+		}
 		matchupPhase = 'loading';
 		try {
-			const result = await api.get<Matchup>(`/api/v1/rankings/${rankingId}/matchups/next${flagStore.toQueryString()}`);
+			const result = await api.get<Matchup>(nextUrl());
 			matchup = result;
 			matchupPhase = 'ready';
 		} catch (err: unknown) {
@@ -116,11 +129,13 @@
 	}
 
 	async function onSongsAdded() {
+		shownPairs = [];
 		await Promise.all([loadNext(), loadSongs()]);
 	}
 
 	async function resetRanking() {
 		if (!confirm('Reset all ELO scores and match history? This cannot be undone.')) return;
+		shownPairs = [];
 		await api.post(`/api/v1/rankings/${rankingId}/reset`, {});
 		await Promise.all([loadNext(), loadSongs()]);
 	}
