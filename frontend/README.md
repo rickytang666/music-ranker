@@ -1,42 +1,33 @@
-# sv
+# frontend
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+sveltekit 5 app. lets users rank songs head-to-head using elo ratings.
 
-## Creating a project
+## stack
 
-If you're seeing this, you've probably already done this step. Congrats!
+- sveltekit 5 (svelte runes)
+- typescript
+- vite
+- deployed on vercel
 
-```sh
-# create a new project
-npx sv create my-app
+## setup
+
+```bash
+pnpm install
+cp .env.example .env  # set api url
 ```
 
-To recreate this project with the same configuration:
+## env vars
 
-```sh
-# recreate this project
-pnpm dlx sv@0.15.3 create --template minimal --types ts --install pnpm frontend
+| var                   | description                                |
+| --------------------- | ------------------------------------------ |
+| `PUBLIC_API_BASE_URL` | backend url (e.g. `http://127.0.0.1:3000`) |
+
+## commands
+
+```bash
+pnpm dev          # start dev server on :5173
+pnpm build        # production build
+pnpm preview      # preview production build
+pnpm check        # type check
+pnpm check:watch  # type check in watch mode
 ```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
