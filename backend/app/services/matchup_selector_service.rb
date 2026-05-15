@@ -52,7 +52,7 @@ class MatchupSelectorService
     sample_by_weights(candidates) do |rs|
       matchup_w  = 1.0 / (rs.matchup_count + 1)
       elo_diff   = (rs.elo_score - song_a_rs.elo_score).abs
-      proximity_w = Math.exp(-elo_diff / 400.0)
+      proximity_w = Math.exp(-elo_diff / 200.0)
       matchup_w * proximity_w
     end
   end
