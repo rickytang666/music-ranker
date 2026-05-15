@@ -2,7 +2,10 @@ name: deploy backend
 
 on:
   push:
-    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  pull_request:
     paths:
       - 'backend/**'
       - '.github/workflows/deploy-backend.yml'
@@ -49,6 +52,7 @@ jobs:
 
   deploy:
     needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
