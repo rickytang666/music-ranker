@@ -13,7 +13,7 @@
   import { api, ApiError } from "$lib/api";
   import { auth } from "$lib/stores/auth.svelte";
   import { rankings } from "$lib/stores/rankings.svelte";
-  import { flagStore } from "$lib/stores/signals.svelte";
+  import { matchupStore, type FlagType } from "$lib/stores/signals.svelte";
   import type { BaseSong, RankedSong } from "$lib/types";
   import SongCard from "$lib/components/SongCard.svelte";
   import SongImportModal from "$lib/components/SongImportModal.svelte";
@@ -33,6 +33,7 @@
   >("loading");
   let rankedSongs = $state<RankedSong[]>([]);
   let shownPairs = $state<string[]>([]);
+  let fromQueue = $state(false);
   let importOpen = $state(false);
   let exportOpen = $state(false);
   let copyFeedback = $state(false);
@@ -79,6 +80,7 @@
         matchup = null;
         rankedSongs = [];
         shownPairs = [];
+        fromQueue = false;
         loadNext();
         loadSongs();
       });
@@ -86,20 +88,29 @@
   });
 
   function nextUrl() {
-    const parts: string[] = [];
-    const flagQs = flagStore.toQueryString();
-    if (flagQs) parts.push(flagQs.slice(1));
-    if (shownPairs.length > 0) parts.push(`skip_pairs=${shownPairs.join(";")}`);
-    return `/api/v1/rankings/${rankingId}/matchups/next${parts.length ? `?${parts.join("&")}` : ""}`;
+    if (shownPairs.length === 0) return `/api/v1/rankings/${rankingId}/matchups/next`;
+    return `/api/v1/rankings/${rankingId}/matchups/next?skip_pairs=${shownPairs.join(";")}`;
   }
 
   async function loadNext() {
-    if (matchup) {
+    // only non-queue matchups go into the skip buffer
+    if (matchup && !fromQueue) {
       const pair = [matchup.song_a.id, matchup.song_b.id]
         .sort((a, b) => a - b)
         .join(",");
       shownPairs = [...shownPairs.slice(-9), pair];
     }
+
+    // serve from queue first — instant, no loading state
+    const queued = matchupStore.dequeue();
+    if (queued) {
+      matchup = queued;
+      fromQueue = true;
+      matchupPhase = "ready";
+      return;
+    }
+
+    fromQueue = false;
     matchupPhase = "loading";
     try {
       const result = await api.get<Matchup>(nextUrl());
@@ -108,6 +119,17 @@
     } catch (err: unknown) {
       matchupPhase =
         err instanceof ApiError && err.status === 422 ? "empty" : "error";
+    }
+  }
+
+  async function flag(songId: number, type: FlagType) {
+    try {
+      const pairs = await api.get<Array<{ song_a: BaseSong; song_b: BaseSong }>>(
+        `/api/v1/rankings/${rankingId}/matchups/challenge?song_id=${songId}&flag_type=${type}`,
+      );
+      matchupStore.enqueue(pairs, songId, type);
+    } catch {
+      // silently ignore
     }
   }
 
@@ -132,7 +154,6 @@
           song_b_id: matchup.song_b.id,
         },
       });
-      flagStore.tick();
       await Promise.all([loadNext(), loadSongs()]);
     } catch {
       matchupPhase = "error";
@@ -229,17 +250,17 @@
         song={matchup.song_a}
         tilt={-1.2}
         disabled={matchupPhase !== "ready"}
-        flag={flagStore.get(matchup.song_a.id)?.type}
+        flag={matchupStore.getFlagType(matchup.song_a.id)}
         onPick={() => pick(matchup!.song_a.id)}
-        onClearFlag={() => flagStore.clear(matchup!.song_a.id)}
+        onClearFlag={() => matchupStore.clearFlag(matchup!.song_a.id)}
       />
       <SongCard
         song={matchup.song_b}
         tilt={1.2}
         disabled={matchupPhase !== "ready"}
-        flag={flagStore.get(matchup.song_b.id)?.type}
+        flag={matchupStore.getFlagType(matchup.song_b.id)}
         onPick={() => pick(matchup!.song_b.id)}
-        onClearFlag={() => flagStore.clear(matchup!.song_b.id)}
+        onClearFlag={() => matchupStore.clearFlag(matchup!.song_b.id)}
       />
     {/if}
   </div>
@@ -317,7 +338,7 @@
       <p>add songs to start ranking</p>
     </div>
   {:else}
-    <RankedList songs={rankedSongs} onRemove={removeSong} />
+    <RankedList songs={rankedSongs} onRemove={removeSong} onFlag={flag} />
   {/if}
 </aside>
 

@@ -23,7 +23,10 @@ Rails.application.routes.draw do
           member { post :reset }
         resources :songs, only: [:index, :create, :destroy]
         resources :matchups, only: [:create] do
-          collection { get :next }
+          collection do
+            get :next
+            get :challenge
+          end
         end
         resource :export, only: [:show]
       end

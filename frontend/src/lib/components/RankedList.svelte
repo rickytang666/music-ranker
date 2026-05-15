@@ -1,17 +1,22 @@
 <script lang="ts">
 	import { IconTrendingDown, IconTrendingUp, IconQuestionMark, IconX } from '@tabler/icons-svelte';
-	import { flagStore, type FlagType } from '$lib/stores/signals.svelte';
+	import { matchupStore, type FlagType } from '$lib/stores/signals.svelte';
 	import type { RankedSong } from '$lib/types';
 	import AlbumArt from './AlbumArt.svelte';
 
-	let { songs, onRemove }: { songs: RankedSong[]; onRemove?: (id: number) => void } = $props();
+	let {
+		songs,
+		onRemove,
+		onFlag
+	}: {
+		songs: RankedSong[];
+		onRemove?: (id: number) => void;
+		onFlag?: (songId: number, type: FlagType) => void;
+	} = $props();
 
-	function toggleFlag(songId: number, type: FlagType) {
-		if (flagStore.get(songId)?.type === type) {
-			flagStore.clear(songId);
-		} else {
-			flagStore.set(songId, type);
-		}
+	function handleFlag(songId: number, type: FlagType) {
+		if (matchupStore.isFlagged(songId)) return;
+		onFlag?.(songId, type);
 	}
 </script>
 
@@ -39,24 +44,24 @@
 			<div class="actions">
 				<button
 					class="action-btn"
-					class:active={flagStore.get(song.id)?.type === 'underrated'}
-					onclick={() => toggleFlag(song.id, 'underrated')}
+					class:active={matchupStore.getFlagType(song.id) === 'underrated'}
+					onclick={() => handleFlag(song.id, 'underrated')}
 					title="Underrated"
 				>
 					<IconTrendingUp size={13} />
 				</button>
 				<button
 					class="action-btn"
-					class:active={flagStore.get(song.id)?.type === 'overrated'}
-					onclick={() => toggleFlag(song.id, 'overrated')}
+					class:active={matchupStore.getFlagType(song.id) === 'overrated'}
+					onclick={() => handleFlag(song.id, 'overrated')}
 					title="Overrated"
 				>
 					<IconTrendingDown size={13} />
 				</button>
 				<button
 					class="action-btn"
-					class:active={flagStore.get(song.id)?.type === 'unsure'}
-					onclick={() => toggleFlag(song.id, 'unsure')}
+					class:active={matchupStore.getFlagType(song.id) === 'unsure'}
+					onclick={() => handleFlag(song.id, 'unsure')}
 					title="Unsure"
 				>
 					<IconQuestionMark size={13} />

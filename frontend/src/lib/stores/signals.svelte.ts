@@ -1,43 +1,52 @@
+import type { BaseSong } from '$lib/types';
+
 export type FlagType = 'overrated' | 'underrated' | 'unsure';
 
-interface Signal {
-	type: FlagType;
-	remaining: number;
+export interface QueuedPair {
+	song_a: BaseSong;
+	song_b: BaseSong;
 }
 
-let signals = $state<Record<number, Signal>>({});
+let queue = $state<QueuedPair[]>([]);
+let flags = $state<Map<number, FlagType>>(new Map());
 
-function set(songId: number, type: FlagType) {
-	signals = { ...signals, [songId]: { type, remaining: 5 } };
+function enqueue(pairs: QueuedPair[], songId: number, type: FlagType) {
+	queue = [...queue, ...pairs];
+	const next = new Map(flags);
+	next.set(songId, type);
+	flags = next;
 }
 
-function clear(songId: number) {
-	const next = { ...signals };
-	delete next[songId];
-	signals = next;
-}
-
-// call after each successful pick
-function tick() {
-	const next: Record<number, Signal> = {};
-	for (const [id, sig] of Object.entries(signals)) {
-		if (sig.remaining > 0) {
-			next[Number(id)] = { ...sig, remaining: sig.remaining - 1 };
-		}
+function dequeue(): QueuedPair | undefined {
+	if (queue.length === 0) return undefined;
+	const [first, ...rest] = queue;
+	queue = rest;
+	// auto-clear flag when all queued pairs for this song are played
+	const songAId = first.song_a.id;
+	if (!rest.some((p) => p.song_a.id === songAId)) {
+		const next = new Map(flags);
+		next.delete(songAId);
+		flags = next;
 	}
-	signals = next;
+	return first;
 }
 
-function toQueryString() {
-	const parts: string[] = [];
-	for (const [id, sig] of Object.entries(signals)) {
-		parts.push(`${sig.type}_ids[]=${id}`);
-	}
-	return parts.length ? `?${parts.join('&')}` : '';
+function hasQueue(): boolean {
+	return queue.length > 0;
 }
 
-function get(songId: number): Signal | undefined {
-	return signals[songId];
+function isFlagged(songId: number): boolean {
+	return flags.has(songId);
 }
 
-export const flagStore = { get, set, clear, tick, toQueryString };
+function getFlagType(songId: number): FlagType | undefined {
+	return flags.get(songId);
+}
+
+function clearFlag(songId: number) {
+	const next = new Map(flags);
+	next.delete(songId);
+	flags = next;
+}
+
+export const matchupStore = { enqueue, dequeue, hasQueue, isFlagged, getFlagType, clearFlag };

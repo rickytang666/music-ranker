@@ -9,13 +9,18 @@ module Api
           ids = pair.split(",").map(&:to_i)
           ids.length == 2 ? ids : nil
         end
-        result = MatchupSelectorService.call(@ranking, signal_params, excluded_pairs: excluded)
+        result = MatchupSelectorService.call(@ranking, excluded_pairs: excluded)
         return render json: { error: "not enough songs" }, status: :unprocessable_entity unless result
 
-        render json: {
-          song_a: song_json(result[:song_a]),
-          song_b: song_json(result[:song_b])
-        }
+        render json: { song_a: song_json(result[:song_a]), song_b: song_json(result[:song_b]) }
+      end
+
+      def challenge
+        song_id   = params.require(:song_id).to_i
+        flag_type = params.require(:flag_type)
+
+        pairs = ChallengePackService.call(@ranking, song_id, flag_type)
+        render json: pairs.map { |p| { song_a: song_json(p[:song_a]), song_b: song_json(p[:song_b]) } }
       end
 
       def create
@@ -44,16 +49,12 @@ module Api
         @ranking = current_user.rankings.find(params[:ranking_id])
       end
 
-      def signal_params
-        params.permit(:ranking_id, overrated_ids: [], underrated_ids: [], unsure_ids: [])
-      end
-
       def matchup_params
         params.require(:matchup).permit(:song_a_id, :song_b_id, :winner_id)
       end
 
       def song_json(song)
-        song.as_json(only: [:id, :spotify_track_id, :title, :artist_name, :album_name, :album_art_url])
+        song.as_json(only: [ :id, :spotify_track_id, :title, :artist_name, :album_name, :album_art_url ])
       end
     end
   end
