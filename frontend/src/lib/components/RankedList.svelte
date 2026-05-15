@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { IconTrendingDown, IconTrendingUp, IconQuestionMark, IconX } from '@tabler/icons-svelte';
+	import { IconTrendingDown, IconTrendingUp, IconQuestionMark, IconX, IconLoader2 } from '@tabler/icons-svelte';
 	import { matchupStore, type FlagType } from '$lib/stores/signals.svelte';
 	import type { RankedSong } from '$lib/types';
 	import AlbumArt from './AlbumArt.svelte';
@@ -7,15 +7,17 @@
 	let {
 		songs,
 		onRemove,
-		onFlag
+		onFlag,
+		flaggingSong
 	}: {
 		songs: RankedSong[];
 		onRemove?: (id: number) => void;
 		onFlag?: (songId: number, type: FlagType) => void;
+		flaggingSong?: number | null;
 	} = $props();
 
 	function handleFlag(songId: number, type: FlagType) {
-		if (matchupStore.isFlagged(songId)) return;
+		if (matchupStore.isFlagged(songId) || flaggingSong === songId) return;
 		onFlag?.(songId, type);
 	}
 </script>
@@ -42,30 +44,34 @@
 			</div>
 
 			<div class="actions">
-				<button
-					class="action-btn"
-					class:active={matchupStore.getFlagType(song.id) === 'underrated'}
-					onclick={() => handleFlag(song.id, 'underrated')}
-					title="Underrated"
-				>
-					<IconTrendingUp size={13} />
-				</button>
-				<button
-					class="action-btn"
-					class:active={matchupStore.getFlagType(song.id) === 'overrated'}
-					onclick={() => handleFlag(song.id, 'overrated')}
-					title="Overrated"
-				>
-					<IconTrendingDown size={13} />
-				</button>
-				<button
-					class="action-btn"
-					class:active={matchupStore.getFlagType(song.id) === 'unsure'}
-					onclick={() => handleFlag(song.id, 'unsure')}
-					title="Unsure"
-				>
-					<IconQuestionMark size={13} />
-				</button>
+				{#if flaggingSong === song.id}
+					<span class="flag-loading"><IconLoader2 size={13} class="spin-sm" /></span>
+				{:else}
+					<button
+						class="action-btn underrated-btn"
+						class:active={matchupStore.getFlagType(song.id) === 'underrated'}
+						onclick={() => handleFlag(song.id, 'underrated')}
+						title="Underrated"
+					>
+						<IconTrendingUp size={13} />
+					</button>
+					<button
+						class="action-btn overrated-btn"
+						class:active={matchupStore.getFlagType(song.id) === 'overrated'}
+						onclick={() => handleFlag(song.id, 'overrated')}
+						title="Overrated"
+					>
+						<IconTrendingDown size={13} />
+					</button>
+					<button
+						class="action-btn unsure-btn"
+						class:active={matchupStore.getFlagType(song.id) === 'unsure'}
+						onclick={() => handleFlag(song.id, 'unsure')}
+						title="Unsure"
+					>
+						<IconQuestionMark size={13} />
+					</button>
+				{/if}
 				{#if onRemove}
 					<button class="action-btn remove" onclick={() => onRemove!(song.id)} title="Remove">
 						<IconX size={13} />
@@ -125,8 +131,26 @@
 		transition: color 0.1s, background 0.1s;
 	}
 	.action-btn:hover { color: var(--ink); background: rgba(26,26,26,0.06); }
-	.action-btn.active { color: var(--ink); }
 	.action-btn.remove:hover { color: #c0392b; background: rgba(192,57,43,0.07); }
+
+	.underrated-btn.active { color: #3b82f6; background: rgba(59,130,246,0.12); }
+	.overrated-btn.active { color: #ef4444; background: rgba(239,68,68,0.12); }
+	.unsure-btn.active { color: #f59e0b; background: rgba(245,158,11,0.12); }
+
+	.flag-loading {
+		width: 66px; /* 3 × 22px buttons */
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--muted);
+	}
+
+	:global(.spin-sm) {
+		animation: spin-sm 1s linear infinite;
+	}
+	@keyframes spin-sm {
+		to { transform: rotate(360deg); }
+	}
 
 	.rank {
 		font-family: var(--font-serif);

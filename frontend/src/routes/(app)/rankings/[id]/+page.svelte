@@ -34,6 +34,7 @@
   let rankedSongs = $state<RankedSong[]>([]);
   let shownPairs = $state<string[]>([]);
   let fromQueue = $state(false);
+  let flaggingSong = $state<number | null>(null);
   let importOpen = $state(false);
   let exportOpen = $state(false);
   let copyFeedback = $state(false);
@@ -123,6 +124,8 @@
   }
 
   async function flag(songId: number, type: FlagType) {
+    if (flaggingSong !== null) return;
+    flaggingSong = songId;
     try {
       const pairs = await api.get<Array<{ song_a: BaseSong; song_b: BaseSong }>>(
         `/api/v1/rankings/${rankingId}/matchups/challenge?song_id=${songId}&flag_type=${type}`,
@@ -130,6 +133,8 @@
       matchupStore.enqueue(pairs, songId, type);
     } catch {
       // silently ignore
+    } finally {
+      flaggingSong = null;
     }
   }
 
@@ -227,6 +232,9 @@
     <div class="matchup-header">
       <p class="label">which do you prefer?</p>
       <p class="ranking-name">{ranking.name}</p>
+      {#if matchupStore.queueLength() > 0}
+        <p class="queue-badge">{matchupStore.queueLength()} challenge{matchupStore.queueLength() === 1 ? '' : 's'} queued</p>
+      {/if}
     </div>
   {/if}
 
@@ -338,7 +346,7 @@
       <p>add songs to start ranking</p>
     </div>
   {:else}
-    <RankedList songs={rankedSongs} onRemove={removeSong} onFlag={flag} />
+    <RankedList songs={rankedSongs} onRemove={removeSong} onFlag={flag} {flaggingSong} />
   {/if}
 </aside>
 
@@ -392,6 +400,18 @@
   .ranking-name {
     font-family: var(--font-serif);
     font-size: 28px;
+  }
+
+  .queue-badge {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 20px;
+    padding: 3px 10px;
   }
 
   .cards-area {

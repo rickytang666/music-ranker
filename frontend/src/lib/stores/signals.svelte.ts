@@ -35,6 +35,10 @@ function hasQueue(): boolean {
 	return queue.length > 0;
 }
 
+function queueLength(): number {
+	return queue.length;
+}
+
 function isFlagged(songId: number): boolean {
 	return flags.has(songId);
 }
@@ -49,4 +53,4 @@ function clearFlag(songId: number) {
 	flags = next;
 }
 
-export const matchupStore = { enqueue, dequeue, hasQueue, isFlagged, getFlagType, clearFlag };
+export const matchupStore = { enqueue, dequeue, hasQueue, queueLength, isFlagged, getFlagType, clearFlag };
