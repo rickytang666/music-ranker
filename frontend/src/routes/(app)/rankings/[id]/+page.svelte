@@ -18,6 +18,7 @@
   import SongCard from "$lib/components/SongCard.svelte";
   import SongImportModal from "$lib/components/SongImportModal.svelte";
   import RankedList from "$lib/components/RankedList.svelte";
+  import AlbumList from "$lib/components/AlbumList.svelte";
 
   interface Matchup {
     song_a: BaseSong;
@@ -39,6 +40,7 @@
   let exportOpen = $state(false);
   let copyFeedback = $state(false);
   let mobileTab = $state<"match" | "ranking">("match");
+  let panelView = $state<"songs" | "albums">("songs");
 
   async function fetchExportText(): Promise<string> {
     const res = await fetch(
@@ -290,7 +292,10 @@
 <aside class="right-panel" class:mobile-hidden={mobileTab !== "ranking"}>
   <div class="panel-header">
     <div class="panel-title">
-      <span class="title-text">Your ranking</span>
+      <div class="view-toggle">
+        <button class="view-btn" class:active={panelView === 'songs'} onclick={() => (panelView = 'songs')}>Songs</button>
+        <button class="view-btn" class:active={panelView === 'albums'} onclick={() => (panelView = 'albums')}>Albums</button>
+      </div>
       {#if rankedSongs.length > 0}
         <span class="song-count">{rankedSongs.length} songs · sorted</span>
       {/if}
@@ -347,8 +352,10 @@
     <div class="empty-list">
       <p>add songs to start ranking</p>
     </div>
-  {:else}
+  {:else if panelView === 'songs'}
     <RankedList songs={rankedSongs} onRemove={removeSong} onFlag={flag} {flaggingSong} />
+  {:else}
+    <AlbumList songs={rankedSongs} />
   {/if}
 </aside>
 
@@ -510,13 +517,35 @@
 
   .panel-title {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 8px;
   }
 
-  .title-text {
-    font-family: var(--font-serif);
-    font-size: 20px;
+  .view-toggle {
+    display: flex;
+    gap: 2px;
+    background: rgba(26, 26, 26, 0.06);
+    border-radius: 6px;
+    padding: 2px;
+  }
+
+  .view-btn {
+    background: none;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--muted);
+    transition: background 0.1s, color 0.1s;
+  }
+  .view-btn.active {
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   }
 
   .song-count {
