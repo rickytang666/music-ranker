@@ -185,6 +185,8 @@
   }
 
   async function removeSong(songId: number) {
+    const song = rankedSongs.find((s) => s.id === songId);
+    if (!confirm(`Remove "${song?.title ?? 'this song'}"? This cannot be undone.`)) return;
     try {
       await api.delete(`/api/v1/rankings/${rankingId}/songs/${songId}`);
       rankedSongs = rankedSongs.filter((s) => s.id !== songId);
