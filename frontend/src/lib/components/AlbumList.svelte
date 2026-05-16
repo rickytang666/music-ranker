@@ -42,7 +42,7 @@
       });
     }
 
-    return rows.sort((a, b) => b.avg_elo - a.avg_elo);
+    return rows.sort((a, b) => a.avg_rank - b.avg_rank);
   });
 </script>
 
