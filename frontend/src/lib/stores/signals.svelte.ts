@@ -48,6 +48,7 @@ function getFlagType(songId: number): FlagType | undefined {
 }
 
 function clearFlag(songId: number) {
+	queue = queue.filter((p) => p.song_a.id !== songId);
 	const next = new Map(flags);
 	next.delete(songId);
 	flags = next;
