@@ -20,7 +20,7 @@
     const map = new Map<string, Array<{ song: RankedSong; rank: number }>>();
 
     songs.forEach((song, i) => {
-      const key = song.album_name ?? `__singles__${song.artist_name}`;
+      const key = song.spotify_album_id ?? song.album_name ?? `__singles__${song.artist_name}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push({ song, rank: i + 1 });
     });

@@ -105,6 +105,7 @@ class SpotifyImporterService
         s.album_name = t[:album_name]
         s.album_art_url = t[:album_art_url]
         s.release_date = t[:release_date]
+        s.spotify_album_id = t[:spotify_album_id]
       end
     end
   end
@@ -117,7 +118,8 @@ class SpotifyImporterService
       artist_name: track.dig("artists", 0, "name"),
       album_name: album&.dig("name"),
       album_art_url: album&.dig("images", 0, "url"),
-      release_date: album&.dig("release_date")
+      release_date: album&.dig("release_date"),
+      spotify_album_id: album&.dig("id")
     }
   end
 end
