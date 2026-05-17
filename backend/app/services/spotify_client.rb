@@ -22,9 +22,8 @@ class SpotifyClient
     get("/albums/#{album_id}/tracks", { offset: offset, limit: 50, market: user_market })
   end
 
-  # accepts up to 50 spotify track ids
-  def tracks(ids)
-    get("/tracks", { ids: ids.join(",") })
+  def track(id)
+    get("/tracks/#{id}")
   end
 
   private
