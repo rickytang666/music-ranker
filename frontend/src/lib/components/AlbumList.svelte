@@ -11,13 +11,7 @@
     album_art_url: string | null;
     song_count: number;
     avg_rank: number;
-    median_elo: number;
-  }
-
-  function median(values: number[]): number {
-    const sorted = [...values].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    mean_elo: number;
   }
 
   let albums = $derived.by(() => {
@@ -33,6 +27,7 @@
     for (const [key, entries] of map) {
       const ranks = entries.map((e) => e.rank);
       const elos = entries.map((e) => e.song.elo_score);
+      const mean_elo = elos.reduce((a, b) => a + b, 0) / elos.length;
       rows.push({
         key,
         album_name: entries[0].song.album_name ?? "Singles",
@@ -40,11 +35,11 @@
         album_art_url: entries[0].song.album_art_url,
         song_count: entries.length,
         avg_rank: ranks.reduce((a, b) => a + b, 0) / ranks.length,
-        median_elo: median(elos),
+        mean_elo: mean_elo,
       });
     }
 
-    return rows.sort((a, b) => b.median_elo - a.median_elo);
+    return rows.sort((a, b) => b.mean_elo - a.mean_elo);
   });
 </script>
 
@@ -63,7 +58,7 @@
       <div class="stats">
         <span class="avg-rank">#{album.avg_rank.toFixed(1)}</span>
         <span class="stat-label">avg rank</span>
-        <span class="song-count">{Math.round(album.median_elo)} elo · {album.song_count} songs</span>
+        <span class="song-count">{Math.round(album.mean_elo)} elo · {album.song_count} songs</span>
       </div>
     </div>
   {/each}
