@@ -4,7 +4,6 @@
   import {
     IconPlus,
     IconLoader2,
-    IconArrowsShuffle,
     IconShare,
     IconCheck,
     IconRotate,
@@ -19,6 +18,7 @@
   import SongImportModal from "$lib/components/SongImportModal.svelte";
   import RankedList from "$lib/components/RankedList.svelte";
   import AlbumList from "$lib/components/AlbumList.svelte";
+  import ConfidenceSlider from "$lib/components/ConfidenceSlider.svelte";
 
   interface Matchup {
     song_a: BaseSong;
@@ -32,12 +32,15 @@
   let matchupPhase = $state<
     "loading" | "ready" | "picking" | "empty" | "error"
   >("loading");
+  let confidence = $state(0.5);
+  let cardsAreaEl = $state<HTMLDivElement | null>(null);
   let rankedSongs = $state<RankedSong[]>([]);
   let shownPairs = $state<string[]>([]);
   let fromQueue = $state(false);
   let flaggingSong = $state<number | null>(null);
   let importOpen = $state(false);
   let exportOpen = $state(false);
+
   let copyFeedback = $state(false);
   let mobileTab = $state<"match" | "ranking">("match");
   let panelView = $state<"songs" | "albums">("songs");
@@ -109,6 +112,7 @@
     if (queued) {
       matchup = queued;
       fromQueue = true;
+      confidence = 0.5;
       matchupPhase = "ready";
       return;
     }
@@ -118,6 +122,7 @@
     try {
       const result = await api.get<Matchup>(nextUrl());
       matchup = result;
+      confidence = 0.5;
       matchupPhase = "ready";
     } catch (err: unknown) {
       matchupPhase =
@@ -150,15 +155,19 @@
     }
   }
 
-  async function pick(winnerId: number) {
+
+  async function submitMatchup() {
     if (!matchup || matchupPhase !== "ready") return;
     matchupPhase = "picking";
     try {
+      const winnerId = confidence <= 0.5 ? matchup.song_a.id : matchup.song_b.id;
+      const normalizedConfidence = confidence <= 0.5 ? 1 - confidence : confidence;
       await api.post(`/api/v1/rankings/${rankingId}/matchups`, {
         matchup: {
           winner_id: winnerId,
           song_a_id: matchup.song_a.id,
           song_b_id: matchup.song_b.id,
+          confidence: normalizedConfidence,
         },
       });
       await Promise.all([loadNext(), loadSongs()]);
@@ -167,9 +176,21 @@
     }
   }
 
-  function skip() {
-    loadNext();
+  function onMouseMove(e: MouseEvent) {
+    if (matchupPhase !== "ready" || !cardsAreaEl) return;
+    const rect = cardsAreaEl.getBoundingClientRect();
+    const raw = (e.clientX - rect.left) / rect.width;
+    confidence = Math.round(Math.max(0, Math.min(1, raw)) * 100) / 100;
   }
+
+  function onTouchMove(e: TouchEvent) {
+    if (matchupPhase !== "ready" || !cardsAreaEl) return;
+    const touch = e.touches[0];
+    const rect = cardsAreaEl.getBoundingClientRect();
+    const raw = (touch.clientX - rect.left) / rect.width;
+    confidence = Math.round(Math.max(0, Math.min(1, raw)) * 100) / 100;
+  }
+
 
   async function onSongsAdded() {
     shownPairs = [];
@@ -204,15 +225,19 @@
       importOpen = true;
       return;
     }
+    if (importOpen || exportOpen) return;
+    const tag = document.activeElement?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
     if (!matchup || matchupPhase !== "ready") return;
-    if (e.key === "ArrowLeft") pick(matchup.song_a.id);
-    if (e.key === "ArrowRight") pick(matchup.song_b.id);
-    if (e.key === "s" || e.key === "S") skip();
+    if (e.key === "ArrowLeft") { e.preventDefault(); confidence = 0; submitMatchup(); }
+    if (e.key === "ArrowRight") { e.preventDefault(); confidence = 1; submitMatchup(); }
+    if (e.key === "Enter") { e.preventDefault(); submitMatchup(); }
+    if (e.key === "t" || e.key === "T") { e.preventDefault(); confidence = 0.5; submitMatchup(); }
   }
 
 </script>
 
-<svelte:window onkeydown={onKeydown} />
+<svelte:window onkeydown={onKeydown} onmousemove={onMouseMove} />
 
 <div class="mobile-tabs">
   <button
@@ -242,7 +267,7 @@
     </div>
   {/if}
 
-  <div class="cards-area">
+  <div class="cards-area" bind:this={cardsAreaEl} ontouchmove={onTouchMove}>
     {#if matchupPhase === "loading" || matchupPhase === "picking"}
       <div class="state-msg">
         <IconLoader2 size={24} class="spin" />
@@ -255,35 +280,45 @@
     {:else if matchupPhase === "error"}
       <div class="state-msg">
         <p class="state-title">something went wrong</p>
-        <button class="retry-btn" onclick={loadNext}>retry</button>
+        <button class="retry-btn" onclick={(e) => { e.stopPropagation(); loadNext(); }}>retry</button>
       </div>
     {:else if matchup}
-      <SongCard
-        song={matchup.song_a}
-        tilt={-1.2}
-        disabled={matchupPhase !== "ready"}
-        flag={matchupStore.getFlagType(matchup.song_a.id)}
-        onPick={() => pick(matchup!.song_a.id)}
-        onClearFlag={() => matchupStore.clearFlag(matchup!.song_a.id)}
-      />
-      <SongCard
-        song={matchup.song_b}
-        tilt={1.2}
-        disabled={matchupPhase !== "ready"}
-        flag={matchupStore.getFlagType(matchup.song_b.id)}
-        onPick={() => pick(matchup!.song_b.id)}
-        onClearFlag={() => matchupStore.clearFlag(matchup!.song_b.id)}
-      />
+      <div class="cards-row">
+        <SongCard
+          song={matchup.song_a}
+          tilt={-1.2}
+          disabled={false}
+          flag={matchupStore.getFlagType(matchup.song_a.id)}
+          onClearFlag={() => matchupStore.clearFlag(matchup!.song_a.id)}
+        />
+        <SongCard
+          song={matchup.song_b}
+          tilt={1.2}
+          disabled={false}
+          flag={matchupStore.getFlagType(matchup.song_b.id)}
+          onClearFlag={() => matchupStore.clearFlag(matchup!.song_b.id)}
+        />
+      </div>
+      <ConfidenceSlider {confidence} />
     {/if}
   </div>
 
   {#if matchupPhase === "ready"}
     <div class="controls">
-      <button class="control-btn" onclick={skip}>
-        <IconArrowsShuffle size={14} />
-        Skip
-      </button>
-      <p class="key-hint">← → to pick · S to skip · ⌘K to add</p>
+      <div class="hotkeys">
+        <div class="hotkey"><kbd>←</kbd><span>A wins</span></div>
+        <div class="hotkey"><kbd>→</kbd><span>B wins</span></div>
+        <div class="hotkey"><kbd>↵</kbd><span>confirm</span></div>
+        <div class="hotkey"><kbd>T</kbd><span>tie</span></div>
+      </div>
+      <div class="mobile-btns">
+        <div class="mobile-row">
+          <button class="mob-btn" onclick={() => { confidence = 0; submitMatchup(); }}>← A</button>
+          <button class="mob-btn" onclick={() => { confidence = 0.5; submitMatchup(); }}>tie</button>
+          <button class="mob-btn" onclick={() => { confidence = 1; submitMatchup(); }}>B →</button>
+        </div>
+        <button class="mob-confirm-btn" onclick={submitMatchup}>confirm</button>
+      </div>
     </div>
   {/if}
 </div>
@@ -425,11 +460,19 @@
 
   .cards-area {
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .cards-row {
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: 72px;
-    flex: 1;
-    min-height: 0;
   }
 
   .state-msg {
@@ -467,34 +510,50 @@
 
   .controls {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
     flex-shrink: 0;
+    padding-bottom: 8px;
+    width: 100%;
+    padding-inline: 16px;
+    box-sizing: border-box;
   }
 
-  .control-btn {
+  .hotkeys {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .hotkey {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: none;
-    border: var(--border);
-    border-radius: 20px;
-    padding: 8px 16px;
-    font-family: var(--font-serif);
-    font-size: 14px;
-    cursor: pointer;
-    color: var(--ink);
-  }
-  .control-btn:hover {
-    background: rgba(26, 26, 26, 0.04);
-  }
-
-  .key-hint {
     font-family: var(--font-mono);
     font-size: 10px;
     color: var(--muted);
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+  }
+
+  kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 22px;
+    padding: 0 5px;
+    border: 1.5px solid rgba(26, 26, 26, 0.3);
+    border-bottom-width: 3px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1;
+  }
+
+  .mobile-btns {
+    display: none;
   }
 
   .right-panel {
@@ -678,10 +737,59 @@
       font-size: 22px;
     }
     .cards-area {
-      gap: 16px;
+      gap: 20px;
     }
-    .key-hint {
+    .cards-row {
+      gap: 24px;
+    }
+    .hotkeys {
       display: none;
+    }
+
+    .mobile-btns {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .mobile-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .mob-btn {
+      flex: 1;
+      padding: 12px 0;
+      border: var(--border);
+      border-radius: 6px;
+      background: none;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .mob-btn:active {
+      background: rgba(26, 26, 26, 0.06);
+    }
+
+    .mob-confirm-btn {
+      width: 100%;
+      padding: 14px 0;
+      border: var(--border);
+      border-radius: 6px;
+      background: var(--ink);
+      color: var(--paper);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .mob-confirm-btn:active {
+      background: #333;
     }
 
     .right-panel {

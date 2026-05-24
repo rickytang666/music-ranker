@@ -8,14 +8,12 @@
 		tilt,
 		disabled,
 		flag,
-		onPick,
 		onClearFlag
 	}: {
 		song: BaseSong;
 		tilt: number;
 		disabled: boolean;
 		flag?: FlagType;
-		onPick: () => void;
 		onClearFlag?: () => void;
 	} = $props();
 
@@ -34,15 +32,13 @@
 		<p class="artist">{song.artist_name}</p>
 		{#if flag}
 			{@const Icon = flagIcon[flag]}
-			<button class="flag-badge" onclick={onClearFlag}>
+			<button class="flag-badge" onclick={(e) => { e.stopPropagation(); onClearFlag?.(); }}>
 				<Icon size={11} />
 				{flag}
 				<IconX size={10} />
 			</button>
 		{/if}
 	</div>
-
-	<button class="pick-btn" onclick={onPick} {disabled}>Pick ♥</button>
 </div>
 
 <style>
@@ -52,6 +48,7 @@
 		align-items: center;
 		gap: 16px;
 		transition: opacity 0.15s ease;
+		cursor: pointer;
 	}
 	.card.disabled { opacity: 0.5; pointer-events: none; }
 
@@ -112,26 +109,10 @@
 	}
 	.flag-badge:hover { background: rgba(26,26,26,0.06); }
 
-	.pick-btn {
-		border: var(--border);
-		border-radius: 6px;
-		background: var(--ink);
-		color: var(--paper);
-		font-family: var(--font-serif);
-		font-size: 18px;
-		padding: 10px 32px;
-		cursor: pointer;
-		width: 200px;
-		margin-top: 4px;
-	}
-	.pick-btn:hover:not(:disabled) { background: #333; }
-	.pick-btn:disabled { cursor: not-allowed; }
-
 	@media (max-width: 640px) {
 		.card { transform: none !important; }
 		.art { width: 160px; height: 160px; }
 		.meta { max-width: 200px; }
 		.title { font-size: 15px; max-width: 200px; }
-		.pick-btn { width: 160px; font-size: 15px; padding: 8px 0; }
 	}
 </style>
