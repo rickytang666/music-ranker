@@ -20,11 +20,11 @@ class EloService
     adjusted_k_loser = adjusted_k(@loser_rs)
 
     @winner_rs.update!(
-      elo_score:     @winner_rs.elo_score + adjusted_k_winner * (@confidence - e_winner),
+      elo_score:     @winner_rs.elo_score + adjusted_k_winner * (1.0 - e_winner),
       matchup_count: @winner_rs.matchup_count + 1
     )
     @loser_rs.update!(
-      elo_score:     @loser_rs.elo_score + adjusted_k_loser * ((1.0 - @confidence) - e_loser),
+      elo_score:     @loser_rs.elo_score - adjusted_k_loser * e_loser,
       matchup_count: @loser_rs.matchup_count + 1
     )
   end
