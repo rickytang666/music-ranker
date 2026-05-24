@@ -6,8 +6,8 @@
   let { confidence }: Props = $props();
 
   const { left, right } = $derived.by(() => ({
-    left: Math.round(confidence * 100),
-    right: Math.round((1 - confidence) * 100),
+    left: Math.round((1 - confidence) * 100),
+    right: Math.round(confidence * 100),
   }));
 </script>
 
@@ -25,7 +25,6 @@
       max="1"
       step="0.01"
       value={confidence}
-      style="background: linear-gradient(to right, #3a9e6e 0%, #3a9e6e {confidence * 100}%, var(--accent) {confidence * 100}%, var(--accent) 100%)"
       class="confidence-slider"
       tabindex="-1"
     />
@@ -84,6 +83,7 @@
     pointer-events: none;
     cursor: default;
     display: block;
+    background: rgba(26, 26, 26, 0.15);
   }
 
   .confidence-slider::-webkit-slider-thumb {
