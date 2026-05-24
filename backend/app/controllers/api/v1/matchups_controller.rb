@@ -33,12 +33,13 @@ module Api
           song_a: song_a,
           song_b: song_b,
           winner: winner,
-          played_at: Time.current
+          played_at: Time.current,
+          confidence: matchup_params[:confidence] || 1.0
         )
 
         winner_rs = @ranking.ranking_songs.find_by!(song: winner)
         loser_rs  = @ranking.ranking_songs.find_by!(song: loser)
-        EloService.call(winner_rs, loser_rs)
+        EloService.call(winner_rs, loser_rs, confidence: matchup.confidence)
 
         render json: { matchup_id: matchup.id }, status: :created
       end
@@ -50,7 +51,7 @@ module Api
       end
 
       def matchup_params
-        params.require(:matchup).permit(:song_a_id, :song_b_id, :winner_id)
+        params.require(:matchup).permit(:song_a_id, :song_b_id, :winner_id, :confidence)
       end
 
       def song_json(song)

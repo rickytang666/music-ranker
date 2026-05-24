@@ -10,11 +10,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_17_215031) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_24_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
   create_table "matchups", force: :cascade do |t|
+    t.float "confidence", default: 1.0
     t.datetime "created_at", null: false
     t.datetime "played_at", null: false
     t.bigint "ranking_id", null: false
