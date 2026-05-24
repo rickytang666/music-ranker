@@ -25,7 +25,7 @@
       max="1"
       step="0.01"
       value={confidence}
-      style="background: linear-gradient(to right, #3a9e6e 0%, #3a9e6e {confidence * 100}%, var(--accent) {confidence * 100}%, var(--accent) 100%)"
+      style="background: linear-gradient(to right, #3a9e6e 0%, #3a9e6e {(1 - confidence) * 100}%, var(--accent) {(1 - confidence) * 100}%, var(--accent) 100%)"
       class="confidence-slider"
       tabindex="-1"
     />
@@ -105,8 +105,9 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
-  @media (max-width: 768px) {
-    .confidence-container { gap: 16px; }
-    .ratio-left, .ratio-right { font-size: 36px; }
+  @media (max-width: 640px) {
+    .confidence-container { gap: 10px; }
+    .ratio-left, .ratio-right { font-size: 28px; }
+    .ratio-dash { font-size: 22px; }
   }
 </style>

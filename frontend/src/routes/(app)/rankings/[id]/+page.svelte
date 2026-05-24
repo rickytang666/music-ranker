@@ -729,18 +729,18 @@
     }
 
     .center {
-      padding: 20px 16px;
+      padding: 12px 12px;
       border-right: none;
-      gap: 20px;
+      gap: 12px;
     }
     .ranking-name {
-      font-size: 22px;
+      font-size: 18px;
     }
     .cards-area {
-      gap: 20px;
+      gap: 12px;
     }
     .cards-row {
-      gap: 24px;
+      gap: 16px;
     }
     .hotkeys {
       display: none;
@@ -750,24 +750,24 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       width: 100%;
     }
 
     .mobile-row {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       width: 100%;
     }
 
     .mob-btn {
       flex: 1;
-      padding: 12px 0;
+      padding: 10px 0;
       border: var(--border);
       border-radius: 6px;
       background: none;
       font-family: var(--font-mono);
-      font-size: 13px;
+      font-size: 12px;
       color: var(--ink);
       cursor: pointer;
     }
@@ -778,13 +778,13 @@
 
     .mob-confirm-btn {
       width: 100%;
-      padding: 14px 0;
+      padding: 11px 0;
       border: var(--border);
       border-radius: 6px;
       background: var(--ink);
       color: var(--paper);
       font-family: var(--font-mono);
-      font-size: 13px;
+      font-size: 12px;
       cursor: pointer;
     }
 

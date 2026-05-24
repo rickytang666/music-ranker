@@ -110,9 +110,10 @@
 	.flag-badge:hover { background: rgba(26,26,26,0.06); }
 
 	@media (max-width: 640px) {
-		.card { transform: none !important; }
-		.art { width: 160px; height: 160px; }
-		.meta { max-width: 200px; }
-		.title { font-size: 15px; max-width: 200px; }
+		.card { transform: none !important; gap: 10px; }
+		.art { width: 120px; height: 120px; }
+		.meta { max-width: 160px; }
+		.title { font-size: 13px; max-width: 160px; }
+		.artist { font-size: 10px; }
 	}
 </style>
