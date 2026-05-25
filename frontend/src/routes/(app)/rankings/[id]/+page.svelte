@@ -7,6 +7,9 @@
     IconShare,
     IconCheck,
     IconRotate,
+    IconArrowLeft,
+    IconArrowRight,
+    IconCornerDownLeft,
   } from "@tabler/icons-svelte";
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
   import { api, ApiError } from "$lib/api";
@@ -34,6 +37,7 @@
   >("loading");
   let confidence = $state(0.5);
   let cardsAreaEl = $state<HTMLDivElement | null>(null);
+  let lastTouchTime = 0;
   let rankedSongs = $state<RankedSong[]>([]);
   let shownPairs = $state<string[]>([]);
   let fromQueue = $state(false);
@@ -177,13 +181,24 @@
   }
 
   function onMouseMove(e: MouseEvent) {
+    if (Date.now() - lastTouchTime < 500) return;
     if (matchupPhase !== "ready" || !cardsAreaEl) return;
     const rect = cardsAreaEl.getBoundingClientRect();
     const raw = (e.clientX - rect.left) / rect.width;
     confidence = Math.round(Math.max(0, Math.min(1, raw)) * 100) / 100;
   }
 
+  function onTouchStart(e: TouchEvent) {
+    lastTouchTime = Date.now();
+    if (matchupPhase !== "ready" || !cardsAreaEl) return;
+    const touch = e.touches[0];
+    const rect = cardsAreaEl.getBoundingClientRect();
+    const raw = (touch.clientX - rect.left) / rect.width;
+    confidence = Math.round(Math.max(0, Math.min(1, raw)) * 100) / 100;
+  }
+
   function onTouchMove(e: TouchEvent) {
+    lastTouchTime = Date.now();
     if (matchupPhase !== "ready" || !cardsAreaEl) return;
     const touch = e.touches[0];
     const rect = cardsAreaEl.getBoundingClientRect();
@@ -267,7 +282,7 @@
     </div>
   {/if}
 
-  <div class="cards-area" bind:this={cardsAreaEl} ontouchmove={onTouchMove}>
+  <div class="cards-area" bind:this={cardsAreaEl} ontouchstart={onTouchStart} ontouchmove={onTouchMove}>
     {#if matchupPhase === "loading" || matchupPhase === "picking"}
       <div class="state-msg">
         <IconLoader2 size={24} class="spin" />
@@ -306,16 +321,16 @@
   {#if matchupPhase === "ready"}
     <div class="controls">
       <div class="hotkeys">
-        <div class="hotkey"><kbd>←</kbd><span>A wins</span></div>
-        <div class="hotkey"><kbd>→</kbd><span>B wins</span></div>
-        <div class="hotkey"><kbd>↵</kbd><span>confirm</span></div>
+        <div class="hotkey"><kbd><IconArrowLeft size={12} /></kbd><span>A wins</span></div>
+        <div class="hotkey"><kbd><IconArrowRight size={12} /></kbd><span>B wins</span></div>
+        <div class="hotkey"><kbd><IconCornerDownLeft size={12} /></kbd><span>confirm</span></div>
         <div class="hotkey"><kbd>T</kbd><span>tie</span></div>
       </div>
       <div class="mobile-btns">
         <div class="mobile-row">
-          <button class="mob-btn" onclick={() => { confidence = 0; submitMatchup(); }}>← A</button>
+          <button class="mob-btn" onclick={() => { confidence = 0; submitMatchup(); }}><IconArrowLeft size={14} /> A</button>
           <button class="mob-btn" onclick={() => { confidence = 0.5; submitMatchup(); }}>tie</button>
-          <button class="mob-btn" onclick={() => { confidence = 1; submitMatchup(); }}>B →</button>
+          <button class="mob-btn" onclick={() => { confidence = 1; submitMatchup(); }}>B <IconArrowRight size={14} /></button>
         </div>
         <button class="mob-confirm-btn" onclick={submitMatchup}>confirm</button>
       </div>
@@ -466,6 +481,7 @@
     gap: 40px;
     flex: 1;
     min-height: 0;
+    touch-action: none;
   }
 
   .cards-row {
@@ -740,7 +756,7 @@
       gap: 12px;
     }
     .cards-row {
-      gap: 16px;
+      gap: 32px;
     }
     .hotkeys {
       display: none;
@@ -770,6 +786,10 @@
       font-size: 12px;
       color: var(--ink);
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
     }
 
     .mob-btn:active {
