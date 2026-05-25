@@ -25,6 +25,12 @@ export default [
     },
   },
   {
+    rules: {
+      // this project has no custom routing hooks, so resolve() is not needed
+      'svelte/no-navigation-without-resolve': 'off',
+    },
+  },
+  {
     ignores: ['build/', '.svelte-kit/', 'dist/', '.vercel/'],
   },
 ];

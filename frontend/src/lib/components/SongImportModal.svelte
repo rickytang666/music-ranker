@@ -102,8 +102,9 @@
 	}
 
 	function toggleItem(id: string) {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const next = new Set(selectedItems);
-		next.has(id) ? next.delete(id) : next.add(id);
+		if (next.has(id)) { next.delete(id); } else { next.add(id); }
 		selectedItems = next;
 	}
 
@@ -115,8 +116,9 @@
 	}
 
 	function toggleTrack(id: number) {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const next = new Set(selectedTracks);
-		next.has(id) ? next.delete(id) : next.add(id);
+		if (next.has(id)) { next.delete(id); } else { next.add(id); }
 		selectedTracks = next;
 	}
 
@@ -152,7 +154,8 @@
 						return api.get<BaseSong[]>(`/api/v1/spotify/albums/${album.id}/tracks?${p}`);
 					})
 			);
-			const seen = new Set<number>();
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity
+		const seen = new Set<number>();
 			tracks = batches.flat().filter((t) => {
 				if (seen.has(t.id)) return false;
 				seen.add(t.id);
@@ -227,7 +230,7 @@
 		</header>
 
 		<div class="mode-tabs">
-			{#each (['song', 'album', 'artist'] as Mode[]) as m}
+			{#each (['song', 'album', 'artist'] as Mode[]) as m (m)}
 				<button class="mode-tab" class:active={mode === m} onclick={() => switchMode(m)}>
 					{m}
 				</button>

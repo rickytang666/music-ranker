@@ -19,11 +19,11 @@
 	try {
 		const cached = localStorage.getItem(RANKINGS_CACHE);
 		if (cached) rankings.set(JSON.parse(cached));
-	} catch {}
+	} catch { /* ignore localStorage errors */ }
 
 	// close drawer on navigation
 	$effect(() => {
-		const _ = $page.url.pathname;
+		void $page.url.pathname;
 		untrack(() => { drawerOpen = false; });
 	});
 
@@ -32,7 +32,7 @@
 			const data = await api.get<typeof rankings.list>('/api/v1/rankings');
 			rankings.set(data);
 			localStorage.setItem(RANKINGS_CACHE, JSON.stringify(data));
-		} catch {}
+		} catch { /* non-critical, sidebar stays on cached data */ }
 	});
 </script>
 
@@ -43,7 +43,7 @@
 {/if}
 
 <div class="shell">
-	<Sidebar {activeId} {drawerOpen} onClose={() => drawerOpen = false} />
+	<Sidebar {activeId} {drawerOpen} />
 	<div class="main">
 		<div class="mobile-topbar">
 			<button class="hamburger" onclick={() => drawerOpen = !drawerOpen}>

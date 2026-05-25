@@ -15,6 +15,7 @@
   }
 
   let albums = $derived.by(() => {
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const map = new Map<string, Array<{ song: RankedSong; rank: number }>>();
 
     songs.forEach((song, i) => {

@@ -282,7 +282,7 @@
     </div>
   {/if}
 
-  <div class="cards-area" bind:this={cardsAreaEl} ontouchstart={onTouchStart} ontouchmove={onTouchMove}>
+  <div class="cards-area" role="region" bind:this={cardsAreaEl} ontouchstart={onTouchStart} ontouchmove={onTouchMove}>
     {#if matchupPhase === "loading" || matchupPhase === "picking"}
       <div class="state-msg">
         <IconLoader2 size={24} class="spin" />

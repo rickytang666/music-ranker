@@ -16,8 +16,7 @@
   let {
     activeId,
     drawerOpen = false,
-    onClose = () => {}
-  }: { activeId?: number; drawerOpen?: boolean; onClose?: () => void } = $props();
+  }: { activeId?: number; drawerOpen?: boolean } = $props();
 
   let collapsed = $state(false);
   let isMobile = $state(false);
