@@ -26,6 +26,22 @@ class SpotifyClient
     get("/tracks/#{id}")
   end
 
+  def create_playlist(name, public: false)
+    post("/users/#{@user.spotify_id}/playlists", { name: name, public: public, description: "exported from music ranker" })
+  end
+
+  def replace_playlist_tracks(playlist_id, uris)
+    put("/playlists/#{playlist_id}/tracks", { uris: uris })
+  end
+
+  def add_tracks_to_playlist(playlist_id, uris)
+    post("/playlists/#{playlist_id}/tracks", { uris: uris })
+  end
+
+  def update_playlist(playlist_id, name:)
+    put("/playlists/#{playlist_id}", { name: name })
+  end
+
   private
 
   def user_market
@@ -38,6 +54,14 @@ class SpotifyClient
         market
       end
     end
+  end
+
+  def post(path, body = {})
+    request(Net::HTTP::Post, path, body)
+  end
+
+  def put(path, body = {})
+    request(Net::HTTP::Put, path, body)
   end
 
   def get(path, params = {}, retries: 2)
@@ -61,6 +85,29 @@ class SpotifyClient
       raise RateLimitError, "spotify rate limit — try again in #{res["Retry-After"] || "a moment"}"
     end
 
+    raise "spotify api error #{res.code}: #{res.body}" unless res.is_a?(Net::HTTPSuccess)
+
+    JSON.parse(res.body)
+  end
+
+  def request(klass, path, body = {})
+    uri = URI("#{BASE_URL}#{path}")
+    req = klass.new(uri)
+    req["Authorization"] = "Bearer #{@token}"
+    req["Content-Type"] = "application/json"
+    req.body = body.to_json
+
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.open_timeout = 5
+    http.read_timeout = 10
+    res = http.request(req)
+
+    if res.code == "429"
+      raise RateLimitError, "spotify rate limit — try again in #{res["Retry-After"] || "a moment"}"
+    end
+
+    return nil if res.is_a?(Net::HTTPNoContent)
     raise "spotify api error #{res.code}: #{res.body}" unless res.is_a?(Net::HTTPSuccess)
 
     JSON.parse(res.body)
