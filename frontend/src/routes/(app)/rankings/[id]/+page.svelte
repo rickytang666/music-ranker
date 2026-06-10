@@ -10,6 +10,7 @@
     IconArrowLeft,
     IconArrowRight,
     IconCornerDownLeft,
+    IconUpload,
   } from "@tabler/icons-svelte";
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
   import { api, ApiError } from "$lib/api";
@@ -19,6 +20,7 @@
   import type { BaseSong, RankedSong } from "$lib/types";
   import SongCard from "$lib/components/SongCard.svelte";
   import SongImportModal from "$lib/components/SongImportModal.svelte";
+  import SpotifyExportModal from "$lib/components/SpotifyExportModal.svelte";
   import RankedList from "$lib/components/RankedList.svelte";
   import AlbumList from "$lib/components/AlbumList.svelte";
   import ConfidenceSlider from "$lib/components/ConfidenceSlider.svelte";
@@ -44,6 +46,7 @@
   let flaggingSong = $state<number | null>(null);
   let importOpen = $state(false);
   let exportOpen = $state(false);
+  let spotifyExportOpen = $state(false);
 
   let copyFeedback = $state(false);
   let mobileTab = $state<"match" | "ranking">("match");
@@ -384,6 +387,11 @@
         </div>
       {/if}
       {#if rankedSongs.length > 0}
+        <button class="icon-btn spotify-btn" onclick={() => (spotifyExportOpen = true)} title="Export to Spotify">
+          <IconUpload size={14} />
+        </button>
+      {/if}
+      {#if rankedSongs.length > 0}
         <button class="icon-btn" onclick={resetRanking} title="Reset ranking">
           <IconRotate size={14} />
         </button>
@@ -415,6 +423,18 @@
     rankingName={ranking.name}
     onClose={() => (importOpen = false)}
     onAdded={onSongsAdded}
+  />
+{/if}
+
+{#if spotifyExportOpen && ranking}
+  <SpotifyExportModal
+    {rankingId}
+    rankingName={ranking.name}
+    spotifyPlaylistId={ranking.spotify_playlist_id ?? null}
+    lastExportCount={ranking.spotify_last_export_count ?? null}
+    {rankedSongs}
+    onClose={() => (spotifyExportOpen = false)}
+    onExported={(playlistId, exportedCount) => rankings.update({ ...ranking, spotify_playlist_id: playlistId, spotify_last_export_count: exportedCount })}
   />
 {/if}
 
@@ -695,6 +715,14 @@
   .icon-btn.active {
     background: var(--ink);
     color: var(--paper);
+  }
+  .spotify-btn {
+    color: #1db954;
+    border-color: #1db954;
+  }
+  .spotify-btn:hover {
+    background: #1db954;
+    color: #fff;
   }
 
   .export-wrap {

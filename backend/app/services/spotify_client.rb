@@ -3,6 +3,12 @@ class SpotifyClient
 
   class RateLimitError < StandardError; end
 
+  # Net::HTTP::Delete drops the body by default (REQUEST_HAS_BODY=false).
+  # Spotify's DELETE /playlists/{id}/tracks requires a JSON body, so we need this.
+  class DeleteWithBody < Net::HTTP::Delete
+    REQUEST_HAS_BODY = true
+  end
+
   def initialize(user)
     SpotifyTokenRefreshService.call(user)
     user.reload
@@ -27,15 +33,15 @@ class SpotifyClient
   end
 
   def create_playlist(name, public: false)
-    post("/users/#{@user.spotify_id}/playlists", { name: name, public: public, description: "exported from music ranker" })
-  end
-
-  def replace_playlist_tracks(playlist_id, uris)
-    put("/playlists/#{playlist_id}/tracks", { uris: uris })
+    post("/me/playlists", { name: name, public: public, description: "exported from music ranker" })
   end
 
   def add_tracks_to_playlist(playlist_id, uris)
-    post("/playlists/#{playlist_id}/tracks", { uris: uris })
+    post("/playlists/#{playlist_id}/items", { uris: uris })
+  end
+
+  def delete_playlist_tracks(playlist_id, uris)
+    request(DeleteWithBody, "/playlists/#{playlist_id}/items", { items: uris.map { |u| { uri: u } } })
   end
 
   def update_playlist(playlist_id, name:)
@@ -64,7 +70,7 @@ class SpotifyClient
     request(Net::HTTP::Put, path, body)
   end
 
-  def get(path, params = {}, retries: 2)
+  def get(path, params = {})
     uri = URI("#{BASE_URL}#{path}")
     if params.any?
       uri.query = params.map { |k, v|
@@ -109,6 +115,7 @@ class SpotifyClient
 
     return nil if res.is_a?(Net::HTTPNoContent)
     raise "spotify api error #{res.code}: #{res.body}" unless res.is_a?(Net::HTTPSuccess)
+    return nil if res.body.nil? || res.body.empty?
 
     JSON.parse(res.body)
   end

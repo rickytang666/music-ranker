@@ -5,7 +5,7 @@ class AuthController < ApplicationController
     user.update!(
       display_name: auth.info.name,
       access_token: auth.credentials.token,
-      refresh_token: auth.credentials.refresh_token,
+      refresh_token: auth.credentials.refresh_token.presence || user.refresh_token,
       token_expires_at: Time.at(auth.credentials.expires_at),
       spotify_market: auth.extra.raw_info["country"]
     )

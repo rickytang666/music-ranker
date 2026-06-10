@@ -43,32 +43,27 @@ class SpotifyExportService
     playlist = client.create_playlist(@name, public: @public)
     playlist_id = playlist["id"]
     push_tracks(client, playlist_id, uris)
-    @ranking.update!(spotify_playlist_id: playlist_id)
+    @ranking.update_columns(spotify_playlist_id: playlist_id, spotify_last_export_uris: uris.to_json)
     :created
   end
 
   def overwrite(client, uris)
     playlist_id = @ranking.spotify_playlist_id
-    client.replace_playlist_tracks(playlist_id, uris.first(BATCH_SIZE))
-    # append any tracks beyond the first 100
-    uris.drop(BATCH_SIZE).each_slice(BATCH_SIZE) do |batch|
-      client.add_tracks_to_playlist(playlist_id, batch)
-    end
+    stored_uris = JSON.parse(@ranking.spotify_last_export_uris.presence || "[]")
+    stored_uris.each_slice(BATCH_SIZE) { |batch| client.delete_playlist_tracks(playlist_id, batch) }
+    push_tracks(client, playlist_id, uris)
     client.update_playlist(playlist_id, name: @name)
+    @ranking.update_column(:spotify_last_export_uris, uris.to_json)
     :updated
   rescue => e
-    raise unless e.message.include?("404")
-    # playlist was deleted on spotify — create fresh
+    raise unless e.message.include?("404") || e.message.include?("403")
+    @ranking.update_column(:spotify_playlist_id, nil)
     create(client, uris)
   end
 
   def push_tracks(client, playlist_id, uris)
-    uris.each_slice(BATCH_SIZE).with_index do |batch, i|
-      if i == 0
-        client.replace_playlist_tracks(playlist_id, batch)
-      else
-        client.add_tracks_to_playlist(playlist_id, batch)
-      end
+    uris.each_slice(BATCH_SIZE) do |batch|
+      client.add_tracks_to_playlist(playlist_id, batch)
     end
   end
 end

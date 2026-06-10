@@ -2,6 +2,8 @@ export interface Ranking {
 	id: number;
 	name: string;
 	created_at: string;
+	spotify_playlist_id: string | null;
+	spotify_last_export_count: number | null;
 }
 
 let list = $state<Ranking[]>([]);

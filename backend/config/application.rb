@@ -44,5 +44,7 @@ module Backend
     # session middleware required for omniauth oauth state param
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use ActionDispatch::Session::CookieStore, key: "_music_ranker_session"
+    require_relative "../app/middleware/omniauth_error_handler"
+    config.middleware.use OmniAuthErrorHandler
   end
 end

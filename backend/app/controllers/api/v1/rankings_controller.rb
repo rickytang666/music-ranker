@@ -3,15 +3,17 @@ module Api
     class RankingsController < BaseController
       before_action :set_ranking, only: [:update, :destroy, :reset]
 
+      RANKING_FIELDS = [:id, :name, :created_at, :spotify_playlist_id, :spotify_last_export_count].freeze
+
       def index
         rankings = current_user.rankings.order(created_at: :desc)
-        render json: rankings.as_json(only: [:id, :name, :created_at])
+        render json: rankings.as_json(only: RANKING_FIELDS)
       end
 
       def create
         ranking = current_user.rankings.build(ranking_params)
         if ranking.save
-          render json: ranking.as_json(only: [:id, :name, :created_at]), status: :created
+          render json: ranking.as_json(only: RANKING_FIELDS), status: :created
         else
           render json: { errors: ranking.errors.full_messages }, status: :unprocessable_entity
         end
@@ -19,7 +21,7 @@ module Api
 
       def update
         if @ranking.update(ranking_params)
-          render json: @ranking.as_json(only: [:id, :name, :created_at])
+          render json: @ranking.as_json(only: RANKING_FIELDS)
         else
           render json: { errors: @ranking.errors.full_messages }, status: :unprocessable_entity
         end
