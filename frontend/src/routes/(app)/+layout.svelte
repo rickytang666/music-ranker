@@ -74,7 +74,7 @@
 		display: flex;
 		overflow: hidden;
 	}
-	@media (max-width: 1199px) {
+	@media (max-width: 768px) {
 		.page-content { flex-direction: column; }
 	}
 	.mobile-topbar {

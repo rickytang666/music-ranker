@@ -759,10 +759,11 @@
 
   /* tablet: two panels, compact, sidebar in drawer */
   @media (min-width: 769px) and (max-width: 1199px) {
-    .right-panel { width: 280px; }
-    .center { padding: 24px 28px; gap: 20px; }
+    .right-panel { width: 340px; }
+    .center { padding: 32px 28px; gap: 24px; }
     .cards-row { gap: 40px; }
-    .cards-area { gap: 24px; }
+    /* remove flex:1 so justify-content:center on .center centers the whole block */
+    .cards-area { flex: none; gap: 24px; min-height: 200px; }
     .ranking-name { font-size: 22px; }
     .hotkeys { display: none; }
     .mobile-btns {

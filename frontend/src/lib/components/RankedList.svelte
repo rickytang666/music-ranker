@@ -233,4 +233,8 @@
 		line-height: 1;
 		opacity: 0.6;
 	}
+
+	@media (min-width: 769px) and (max-width: 1199px) {
+		.row { padding: 9px 10px; }
+	}
 </style>
