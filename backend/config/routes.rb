@@ -28,7 +28,9 @@ Rails.application.routes.draw do
             get :challenge
           end
         end
-        resource :export, only: [:show]
+        resource :export, only: [:show] do
+          collection { post :spotify }
+        end
       end
     end
   end
