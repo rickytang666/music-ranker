@@ -74,7 +74,7 @@
 		display: flex;
 		overflow: hidden;
 	}
-	@media (max-width: 640px) {
+	@media (max-width: 1199px) {
 		.page-content { flex-direction: column; }
 	}
 	.mobile-topbar {
@@ -108,7 +108,7 @@
 		background: rgba(26, 26, 26, 0.4);
 		z-index: 199;
 	}
-	@media (max-width: 640px) {
+	@media (max-width: 1199px) {
 		.mobile-topbar { display: flex; }
 	}
 </style>

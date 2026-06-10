@@ -225,7 +225,7 @@
     align-items: center;
   }
 
-  @media (max-width: 640px) {
+  @media (max-width: 1199px) {
     .sidebar {
       position: fixed;
       left: 0;

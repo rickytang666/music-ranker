@@ -109,7 +109,15 @@
 	}
 	.flag-badge:hover { background: rgba(26,26,26,0.06); }
 
-	@media (max-width: 640px) {
+	@media (min-width: 769px) and (max-width: 1199px) {
+		.card { gap: 12px; }
+		.art { width: 180px; height: 180px; }
+		.meta { max-width: 180px; }
+		.title { font-size: 15px; max-width: 180px; }
+		.artist { font-size: 10px; }
+	}
+
+	@media (max-width: 768px) {
 		.card { transform: none !important; gap: 10px; }
 		.art { width: 120px; height: 120px; }
 		.meta { max-width: 160px; }

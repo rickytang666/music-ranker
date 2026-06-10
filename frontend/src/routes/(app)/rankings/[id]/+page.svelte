@@ -572,6 +572,48 @@
     display: none;
   }
 
+  .mobile-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .mob-btn {
+    flex: 1;
+    padding: 10px 0;
+    border: var(--border);
+    border-radius: 6px;
+    background: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .mob-btn:active {
+    background: rgba(26, 26, 26, 0.06);
+  }
+
+  .mob-confirm-btn {
+    width: 100%;
+    padding: 11px 0;
+    border: var(--border);
+    border-radius: 6px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .mob-confirm-btn:active {
+    background: #333;
+  }
+
   .right-panel {
     width: 400px;
     flex-shrink: 0;
@@ -715,7 +757,26 @@
     display: none;
   }
 
-  @media (max-width: 640px) {
+  /* tablet: two panels, compact, sidebar in drawer */
+  @media (min-width: 769px) and (max-width: 1199px) {
+    .right-panel { width: 280px; }
+    .center { padding: 24px 28px; gap: 20px; }
+    .cards-row { gap: 40px; }
+    .cards-area { gap: 24px; }
+    .ranking-name { font-size: 22px; }
+    .hotkeys { display: none; }
+    .mobile-btns {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      max-width: 420px;
+    }
+  }
+
+  /* mobile: tab-based single panel */
+  @media (max-width: 768px) {
     .mobile-hidden {
       display: none !important;
     }
@@ -749,18 +810,10 @@
       border-right: none;
       gap: 12px;
     }
-    .ranking-name {
-      font-size: 18px;
-    }
-    .cards-area {
-      gap: 12px;
-    }
-    .cards-row {
-      gap: 32px;
-    }
-    .hotkeys {
-      display: none;
-    }
+    .ranking-name { font-size: 18px; }
+    .cards-area { gap: 12px; }
+    .cards-row { gap: 32px; }
+    .hotkeys { display: none; }
 
     .mobile-btns {
       display: flex;
@@ -768,48 +821,6 @@
       align-items: center;
       gap: 8px;
       width: 100%;
-    }
-
-    .mobile-row {
-      display: flex;
-      gap: 8px;
-      width: 100%;
-    }
-
-    .mob-btn {
-      flex: 1;
-      padding: 10px 0;
-      border: var(--border);
-      border-radius: 6px;
-      background: none;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--ink);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-    }
-
-    .mob-btn:active {
-      background: rgba(26, 26, 26, 0.06);
-    }
-
-    .mob-confirm-btn {
-      width: 100%;
-      padding: 11px 0;
-      border: var(--border);
-      border-radius: 6px;
-      background: var(--ink);
-      color: var(--paper);
-      font-family: var(--font-mono);
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .mob-confirm-btn:active {
-      background: #333;
     }
 
     .right-panel {

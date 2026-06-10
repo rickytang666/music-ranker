@@ -105,7 +105,13 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
-  @media (max-width: 640px) {
+  @media (min-width: 769px) and (max-width: 1199px) {
+    .confidence-container { gap: 14px; }
+    .ratio-left, .ratio-right { font-size: 36px; }
+    .ratio-dash { font-size: 26px; }
+  }
+
+  @media (max-width: 768px) {
     .confidence-container { gap: 10px; }
     .ratio-left, .ratio-right { font-size: 28px; }
     .ratio-dash { font-size: 22px; }
