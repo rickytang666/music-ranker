@@ -8,9 +8,11 @@
     IconX,
     IconPencil,
     IconTrash,
+    IconLogout,
   } from "@tabler/icons-svelte";
   import { onMount } from "svelte";
   import { api } from "$lib/api";
+  import { auth } from "$lib/stores/auth.svelte";
   import { rankings, type Ranking } from "$lib/stores/rankings.svelte";
 
   let {
@@ -82,6 +84,12 @@
     } catch {
       // keep editing on error
     }
+  }
+
+  async function logout() {
+    await api.delete('/api/v1/auth/logout').catch(() => {});
+    auth.clear();
+    goto('/login');
   }
 
   async function deleteRanking(ranking: Ranking) {
@@ -172,6 +180,9 @@
       >
         <IconPlus size={16} />
       </button>
+      <button class="glyph-logout" onclick={logout} title="Log out">
+        <IconLogout size={16} />
+      </button>
     {:else if creating}
       <div class="new-ranking-form">
         <!-- svelte-ignore a11y_autofocus -->
@@ -202,6 +213,10 @@
       <button class="new-ranking-btn" onclick={() => (creating = true)}>
         <IconPlus size={14} />
         New Ranking
+      </button>
+      <button class="logout-btn" onclick={logout}>
+        <IconLogout size={14} />
+        Log out
       </button>
     {/if}
   </div>
@@ -399,6 +414,9 @@
 
   .footer {
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .new-ranking-btn {
@@ -453,5 +471,44 @@
     display: flex;
     gap: 6px;
     justify-content: flex-end;
+  }
+
+  .logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: var(--font-serif);
+    font-size: 14px;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.1s, background 0.1s;
+  }
+  .logout-btn:hover {
+    color: #c0392b;
+    background: rgba(192, 57, 43, 0.06);
+  }
+
+  .glyph-logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.1s, background 0.1s;
+  }
+  .glyph-logout:hover {
+    color: #c0392b;
+    background: rgba(192, 57, 43, 0.06);
   }
 </style>
