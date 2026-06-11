@@ -12,15 +12,17 @@ export class ApiError extends Error {
 	}
 }
 
+function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+	const headers: Record<string, string> = { ...extra };
+	if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`;
+	return headers;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-	const headers: Record<string, string> = {
+	const headers = authHeaders({
 		'Content-Type': 'application/json',
 		...(options.headers as Record<string, string>)
-	};
-
-	if (auth.token) {
-		headers['Authorization'] = `Bearer ${auth.token}`;
-	}
+	});
 
 	const res = await fetch(`${PUBLIC_API_BASE_URL}${path}`, { ...options, headers });
 
@@ -33,8 +35,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	return res.json();
 }
 
+async function getText(path: string): Promise<string> {
+	const headers = authHeaders({ Accept: 'text/plain' });
+	const res = await fetch(`${PUBLIC_API_BASE_URL}${path}`, { headers });
+	if (!res.ok) {
+		const body = await res.json().catch(() => ({}));
+		throw new ApiError(res.status, body);
+	}
+	return res.text();
+}
+
 export const api = {
 	get: <T>(path: string) => request<T>(path),
+	getText,
 	post: <T>(path: string, body: unknown) =>
 		request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
 	patch: <T>(path: string, body: unknown) =>

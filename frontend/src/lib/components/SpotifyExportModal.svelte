@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { IconX, IconMinus, IconPlus, IconExternalLink } from '@tabler/icons-svelte';
+	import { IconMinus, IconPlus, IconExternalLink } from '@tabler/icons-svelte';
 	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import { api } from '$lib/api';
 	import type { RankedSong } from '$lib/types';
+	import Modal from './Modal.svelte';
 
 	let {
 		rankingId,
@@ -66,29 +67,10 @@
 		}
 	}
 
-	function onOverlayClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) onClose();
-	}
-
-	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') onClose();
-	}
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="overlay" onclick={onOverlayClick}>
-	<div class="modal" role="dialog" aria-modal="true">
-		<header>
-			<span class="modal-title">export to spotify</span>
-			<button class="close-btn" onclick={onClose} aria-label="Close">
-				<IconX size={16} />
-			</button>
-		</header>
-
-		{#if phase === 'success'}
+<Modal title="export to spotify" {onClose}>
+	{#if phase === 'success'}
 			<div class="result-area">
 				<p class="result-msg">{resultMsg}</p>
 				<a class="open-link" href={playlistUrl} target="_blank" rel="noopener noreferrer">
@@ -194,59 +176,9 @@
 				</button>
 			</footer>
 		{/if}
-	</div>
-</div>
+</Modal>
 
 <style>
-	.overlay {
-		position: fixed;
-		inset: 0;
-		background: rgba(26, 26, 26, 0.4);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 100;
-	}
-
-	.modal {
-		background: var(--paper);
-		border: var(--border);
-		border-radius: 8px;
-		width: 480px;
-		max-width: 95vw;
-		max-height: 80vh;
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-	}
-
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 18px 20px 14px;
-		border-bottom: var(--border);
-		flex-shrink: 0;
-	}
-
-	.modal-title {
-		font-family: var(--font-serif);
-		font-size: 20px;
-	}
-
-	.close-btn {
-		background: none;
-		border: var(--border);
-		border-radius: 4px;
-		width: 26px;
-		height: 26px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		cursor: pointer;
-		color: var(--ink);
-	}
-
 	.form {
 		padding: 16px 20px;
 		display: flex;
@@ -487,14 +419,4 @@
 		letter-spacing: 0.3px;
 	}
 
-	@media (max-width: 640px) {
-		.overlay { align-items: flex-end; background: rgba(26, 26, 26, 0.5); }
-		.modal {
-			width: 100%;
-			max-width: 100%;
-			max-height: 92vh;
-			border-radius: 12px 12px 0 0;
-			border-bottom: none;
-		}
-	}
 </style>

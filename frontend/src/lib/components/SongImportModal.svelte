@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { IconSearch, IconX, IconLoader2 } from '@tabler/icons-svelte';
+	import { IconSearch, IconLoader2 } from '@tabler/icons-svelte';
 	import { api } from '$lib/api';
 	import type { BaseSong } from '$lib/types';
 	import ImportItem from './ImportItem.svelte';
+	import Modal from './Modal.svelte';
 
 	interface AlbumResult {
 		id: string;
@@ -101,11 +102,15 @@
 		}
 	}
 
-	function toggleItem(id: string) {
+	function toggleSetItem<T>(set: Set<T>, id: T): Set<T> {
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity
-		const next = new Set(selectedItems);
+		const next = new Set(set);
 		if (next.has(id)) { next.delete(id); } else { next.add(id); }
-		selectedItems = next;
+		return next;
+	}
+
+	function toggleItem(id: string) {
+		selectedItems = toggleSetItem(selectedItems, id);
 	}
 
 	function toggleAllItems() {
@@ -116,10 +121,7 @@
 	}
 
 	function toggleTrack(id: number) {
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity
-		const next = new Set(selectedTracks);
-		if (next.has(id)) { next.delete(id); } else { next.add(id); }
-		selectedTracks = next;
+		selectedTracks = toggleSetItem(selectedTracks, id);
 	}
 
 	function toggleAllTracks() {
@@ -195,14 +197,6 @@
 		}
 	}
 
-	function onOverlayClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) onClose();
-	}
-
-	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') onClose();
-	}
-
 	let canAdd = $derived(
 		(mode === 'song' && phase === 'results' && selectedTracks.size > 0) ||
 		(phase === 'tracks' && selectedTracks.size > 0)
@@ -213,22 +207,7 @@
 	);
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="overlay" onclick={onOverlayClick}>
-	<div class="modal" role="dialog" aria-modal="true">
-		<header>
-			<div class="header-text">
-				<span class="modal-title">Add songs</span>
-				<span class="ranking-name">— {rankingName}</span>
-			</div>
-			<button class="close-btn" onclick={onClose} aria-label="Close">
-				<IconX size={16} />
-			</button>
-		</header>
-
+<Modal title="Add songs" subtitle="· {rankingName}" width="680px" {onClose}>
 		<div class="mode-tabs">
 			{#each (['song', 'album', 'artist'] as Mode[]) as m (m)}
 				<button class="mode-tab" class:active={mode === m} onclick={() => switchMode(m)}>
@@ -372,69 +351,9 @@
 				</button>
 			{/if}
 		</footer>
-	</div>
-</div>
+</Modal>
 
 <style>
-	.overlay {
-		position: fixed;
-		inset: 0;
-		background: rgba(26, 26, 26, 0.4);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 100;
-	}
-
-	.modal {
-		background: var(--paper);
-		border: var(--border);
-		border-radius: 8px;
-		width: 680px;
-		max-width: 95vw;
-		max-height: 80vh;
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-	}
-
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 18px 20px 14px;
-		border-bottom: var(--border);
-		flex-shrink: 0;
-	}
-
-	.header-text {
-		display: flex;
-		align-items: baseline;
-		gap: 8px;
-	}
-
-	.modal-title { font-family: var(--font-serif); font-size: 20px; }
-
-	.ranking-name {
-		font-family: var(--font-mono);
-		font-size: 11px;
-		color: var(--muted);
-		letter-spacing: 0.3px;
-	}
-
-	.close-btn {
-		background: none;
-		border: var(--border);
-		border-radius: 4px;
-		width: 26px;
-		height: 26px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		cursor: pointer;
-		color: var(--ink);
-	}
-
 	.mode-tabs {
 		display: flex;
 		border-bottom: var(--border);
@@ -552,14 +471,4 @@
 	}
 	.add-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-	@media (max-width: 640px) {
-		.overlay { align-items: flex-end; background: rgba(26, 26, 26, 0.5); }
-		.modal {
-			width: 100%;
-			max-width: 100%;
-			max-height: 92vh;
-			border-radius: 12px 12px 0 0;
-			border-bottom: none;
-		}
-	}
 </style>

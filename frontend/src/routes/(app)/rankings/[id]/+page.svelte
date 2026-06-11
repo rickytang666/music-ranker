@@ -12,9 +12,7 @@
     IconCornerDownLeft,
     IconUpload,
   } from "@tabler/icons-svelte";
-  import { PUBLIC_API_BASE_URL } from "$env/static/public";
   import { api, ApiError } from "$lib/api";
-  import { auth } from "$lib/stores/auth.svelte";
   import { rankings } from "$lib/stores/rankings.svelte";
   import { matchupStore, type FlagType } from "$lib/stores/signals.svelte";
   import type { BaseSong, RankedSong } from "$lib/types";
@@ -29,6 +27,9 @@
     song_a: BaseSong;
     song_b: BaseSong;
   }
+
+  const SKIP_BUFFER_SIZE = 9;
+  const TOUCH_DEBOUNCE_MS = 500;
 
   let rankingId = $derived(parseInt($page.params.id ?? "0"));
   let ranking = $derived(rankings.list.find((r) => r.id === rankingId));
@@ -53,17 +54,7 @@
   let panelView = $state<"songs" | "albums">("songs");
 
   async function fetchExportText(): Promise<string> {
-    const res = await fetch(
-      `${PUBLIC_API_BASE_URL}/api/v1/rankings/${rankingId}/export`,
-      {
-        headers: {
-          Authorization: `Bearer ${auth.token}`,
-          Accept: "text/plain",
-        },
-      },
-    );
-    if (!res.ok) throw new Error("export failed");
-    return res.text();
+    return api.getText(`/api/v1/rankings/${rankingId}/export`);
   }
 
   async function copyToClipboard() {
@@ -111,7 +102,7 @@
       const pair = [matchup.song_a.id, matchup.song_b.id]
         .sort((a, b) => a - b)
         .join(",");
-      shownPairs = [...shownPairs.slice(-9), pair];
+      shownPairs = [...shownPairs.slice(-SKIP_BUFFER_SIZE), pair];
     }
 
     // serve from queue first — instant, no loading state
@@ -183,30 +174,27 @@
     }
   }
 
+  function positionToConfidence(clientX: number, rect: DOMRect): number {
+    const raw = (clientX - rect.left) / rect.width;
+    return Math.round(Math.max(0, Math.min(1, raw)) * 100) / 100;
+  }
+
   function onMouseMove(e: MouseEvent) {
-    if (Date.now() - lastTouchTime < 500) return;
+    if (Date.now() - lastTouchTime < TOUCH_DEBOUNCE_MS) return;
     if (matchupPhase !== "ready" || !cardsAreaEl) return;
-    const rect = cardsAreaEl.getBoundingClientRect();
-    const raw = (e.clientX - rect.left) / rect.width;
-    confidence = Math.round(Math.max(0, Math.min(1, raw)) * 100) / 100;
+    confidence = positionToConfidence(e.clientX, cardsAreaEl.getBoundingClientRect());
   }
 
   function onTouchStart(e: TouchEvent) {
     lastTouchTime = Date.now();
     if (matchupPhase !== "ready" || !cardsAreaEl) return;
-    const touch = e.touches[0];
-    const rect = cardsAreaEl.getBoundingClientRect();
-    const raw = (touch.clientX - rect.left) / rect.width;
-    confidence = Math.round(Math.max(0, Math.min(1, raw)) * 100) / 100;
+    confidence = positionToConfidence(e.touches[0].clientX, cardsAreaEl.getBoundingClientRect());
   }
 
   function onTouchMove(e: TouchEvent) {
     lastTouchTime = Date.now();
     if (matchupPhase !== "ready" || !cardsAreaEl) return;
-    const touch = e.touches[0];
-    const rect = cardsAreaEl.getBoundingClientRect();
-    const raw = (touch.clientX - rect.left) / rect.width;
-    confidence = Math.round(Math.max(0, Math.min(1, raw)) * 100) / 100;
+    confidence = positionToConfidence(e.touches[0].clientX, cardsAreaEl.getBoundingClientRect());
   }
 
 
@@ -385,13 +373,9 @@
             </div>
           {/if}
         </div>
-      {/if}
-      {#if rankedSongs.length > 0}
         <button class="icon-btn spotify-btn" onclick={() => (spotifyExportOpen = true)} title="Export to Spotify">
           <IconUpload size={14} />
         </button>
-      {/if}
-      {#if rankedSongs.length > 0}
         <button class="icon-btn" onclick={resetRanking} title="Reset ranking">
           <IconRotate size={14} />
         </button>
