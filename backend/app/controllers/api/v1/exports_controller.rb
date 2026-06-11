@@ -22,9 +22,16 @@ module Api
         render json: result
       rescue => e
         Rails.logger.error "spotify export error: #{e.class}: #{e.message}"
-        if e.message.include?("403")
+        render_spotify_error(e)
+      end
+
+      private
+
+      def render_spotify_error(e)
+        case e
+        when SpotifyClient::ForbiddenError
           render json: { error: "spotify_scope_required" }, status: :forbidden
-        elsif e.message.include?("503") || e.message.include?("502")
+        when SpotifyClient::ServiceUnavailableError
           render json: { error: "spotify is temporarily unavailable, try again in a moment" }, status: :service_unavailable
         else
           render json: { error: e.message }, status: :unprocessable_entity

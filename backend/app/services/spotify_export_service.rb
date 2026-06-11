@@ -16,15 +16,8 @@ class SpotifyExportService
   def call
     client = SpotifyClient.new(@user)
     uris   = track_uris
-
-    status = if @ranking.spotify_playlist_id.present?
-      overwrite(client, uris)
-    else
-      create(client, uris)
-    end
-
+    status = create_or_overwrite(client, uris)
     @ranking.update!(spotify_last_export_count: @count)
-
     { status: status, playlist_url: "https://open.spotify.com/playlist/#{@ranking.spotify_playlist_id}" }
   end
 
@@ -37,6 +30,15 @@ class SpotifyExportService
             .limit(@count)
             .pluck("songs.spotify_track_id")
             .map { |id| "spotify:track:#{id}" }
+  end
+
+  def create_or_overwrite(client, uris)
+    return create(client, uris) unless @ranking.spotify_playlist_id.present?
+
+    overwrite(client, uris)
+  rescue SpotifyClient::ForbiddenError, SpotifyClient::NotFoundError
+    @ranking.update_column(:spotify_playlist_id, nil)
+    create(client, uris)
   end
 
   def create(client, uris)
@@ -55,10 +57,6 @@ class SpotifyExportService
     client.update_playlist(playlist_id, name: @name)
     @ranking.update_column(:spotify_last_export_uris, uris.to_json)
     :updated
-  rescue => e
-    raise unless e.message.include?("404") || e.message.include?("403")
-    @ranking.update_column(:spotify_playlist_id, nil)
-    create(client, uris)
   end
 
   def push_tracks(client, playlist_id, uris)

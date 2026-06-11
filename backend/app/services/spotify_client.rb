@@ -2,6 +2,9 @@ class SpotifyClient
   BASE_URL = "https://api.spotify.com/v1"
 
   class RateLimitError < StandardError; end
+  class ForbiddenError < StandardError; end
+  class NotFoundError < StandardError; end
+  class ServiceUnavailableError < StandardError; end
 
   # Net::HTTP::Delete drops the body by default (REQUEST_HAS_BODY=false).
   # Spotify's DELETE /playlists/{id}/tracks requires a JSON body, so we need this.
@@ -62,6 +65,24 @@ class SpotifyClient
     end
   end
 
+  def check_response!(res)
+    case res.code
+    when "429" then raise RateLimitError, "spotify rate limit — try again in #{res["Retry-After"] || "a moment"}"
+    when "403" then raise ForbiddenError, "spotify api error 403: #{res.body}"
+    when "404" then raise NotFoundError, "spotify api error 404: #{res.body}"
+    when "502", "503" then raise ServiceUnavailableError, "spotify api error #{res.code}: #{res.body}"
+    end
+    raise "spotify api error #{res.code}: #{res.body}" unless res.is_a?(Net::HTTPSuccess) || res.is_a?(Net::HTTPNoContent)
+  end
+
+  def build_http(uri)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.open_timeout = 5
+    http.read_timeout = 10
+    http
+  end
+
   def post(path, body = {})
     request(Net::HTTP::Post, path, body)
   end
@@ -81,18 +102,8 @@ class SpotifyClient
     req = Net::HTTP::Get.new(uri)
     req["Authorization"] = "Bearer #{@token}"
 
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = true
-    http.open_timeout = 5
-    http.read_timeout = 10
-    res = http.request(req)
-
-    if res.code == "429"
-      raise RateLimitError, "spotify rate limit — try again in #{res["Retry-After"] || "a moment"}"
-    end
-
-    raise "spotify api error #{res.code}: #{res.body}" unless res.is_a?(Net::HTTPSuccess)
-
+    res = build_http(uri).request(req)
+    check_response!(res)
     JSON.parse(res.body)
   end
 
@@ -103,19 +114,9 @@ class SpotifyClient
     req["Content-Type"] = "application/json"
     req.body = body.to_json
 
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = true
-    http.open_timeout = 5
-    http.read_timeout = 10
-    res = http.request(req)
-
-    if res.code == "429"
-      raise RateLimitError, "spotify rate limit — try again in #{res["Retry-After"] || "a moment"}"
-    end
-
-    return nil if res.is_a?(Net::HTTPNoContent)
-    raise "spotify api error #{res.code}: #{res.body}" unless res.is_a?(Net::HTTPSuccess)
-    return nil if res.body.nil? || res.body.empty?
+    res = build_http(uri).request(req)
+    check_response!(res)
+    return nil if res.is_a?(Net::HTTPNoContent) || res.body.nil? || res.body.empty?
 
     JSON.parse(res.body)
   end
