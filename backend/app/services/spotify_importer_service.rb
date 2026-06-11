@@ -49,15 +49,7 @@ class SpotifyImporterService
   end
 
   def import_album_tracks(album_id, album: nil)
-    tracks = []
-    offset = 0
-    loop do
-      data = @client.album_tracks(album_id, offset: offset)
-      items = data["items"]
-      tracks += items
-      break if data["next"].nil? || items.empty?
-      offset += items.length
-    end
+    tracks = paginate_spotify { |offset| @client.album_tracks(album_id, offset: offset) }
     upsert_songs(tracks.map { |t| serialize_track(t, album: album) })
   rescue RuntimeError => e
     Rails.logger.warn "album import failed #{album_id}: #{e.message}"
@@ -66,30 +58,26 @@ class SpotifyImporterService
 
   private
 
-  def fetch_all_albums(artist_id)
-    albums = []
+  def paginate_spotify(&fetch)
+    items  = []
     offset = 0
     loop do
-      data = @client.artist_albums(artist_id, offset: offset, limit: 50)
-      items = data["items"]
-      albums += items
-      break if data["next"].nil? || items.empty?
-      offset += items.length
+      data    = fetch.call(offset)
+      fetched = data["items"]
+      items  += fetched
+      break if data["next"].nil? || fetched.empty?
+      offset += fetched.length
     end
-    albums
+    items
+  end
+
+  def fetch_all_albums(artist_id)
+    paginate_spotify { |offset| @client.artist_albums(artist_id, offset: offset, limit: 50) }
   end
 
   def fetch_tracks_for_albums(albums)
     albums.flat_map do |album|
-      tracks = []
-      offset = 0
-      loop do
-        data = @client.album_tracks(album["id"], offset: offset)
-        items = data["items"]
-        tracks += items
-        break if data["next"].nil? || items.empty?
-        offset += items.length
-      end
+      tracks = paginate_spotify { |offset| @client.album_tracks(album["id"], offset: offset) }
       tracks.map { |t| serialize_track(t, album: album) }
     rescue RuntimeError => e
       Rails.logger.warn "skipping album #{album["id"]}: #{e.message}"

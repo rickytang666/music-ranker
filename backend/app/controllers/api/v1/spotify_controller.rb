@@ -14,7 +14,7 @@ module Api
 
       def search_tracks
         songs = importer.search_tracks(params.require(:q))
-        render json: songs.map { |s| s.as_json(only: [:id, :spotify_track_id, :title, :artist_name, :album_name, :album_art_url]) }
+        render json: songs.map { |s| s.as_json(only: Song::JSON_FIELDS) }
       end
 
       def artist_albums
@@ -24,7 +24,7 @@ module Api
 
       def artist_tracks
         songs = importer.import_artist_tracks(params[:id])
-        render json: songs.map { |s| s.as_json(only: [:id, :spotify_track_id, :title, :artist_name, :album_name, :album_art_url]) }
+        render json: songs.map { |s| s.as_json(only: Song::JSON_FIELDS) }
       end
 
       def album_tracks
@@ -34,7 +34,7 @@ module Api
           "release_date" => params[:release_date]
         }
         songs = importer.import_album_tracks(params[:id], album: album)
-        render json: songs.map { |s| s.as_json(only: [:id, :spotify_track_id, :title, :artist_name, :album_name, :album_art_url]) }
+        render json: songs.map { |s| s.as_json(only: Song::JSON_FIELDS) }
       end
 
       private

@@ -1,6 +1,12 @@
 class RankingSong < ApplicationRecord
+  DEFAULT_ELO = 1000.0
+
   belongs_to :ranking
   belongs_to :song
+
+  scope :ranked_order, -> {
+    includes(:song).sort_by { |rs| [-rs.elo_score, -(rs.song.release_date || "0").tr("-", "").to_i] }
+  }
 
   validates :elo_score, presence: true
   validates :song_id, uniqueness: { scope: :ranking_id }

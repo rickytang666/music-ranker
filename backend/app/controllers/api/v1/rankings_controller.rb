@@ -33,7 +33,7 @@ module Api
       end
 
       def reset
-        @ranking.ranking_songs.update_all(elo_score: 1000.0, matchup_count: 0)
+        @ranking.ranking_songs.update_all(elo_score: RankingSong::DEFAULT_ELO, matchup_count: 0)
         @ranking.matchups.delete_all
         head :no_content
       end

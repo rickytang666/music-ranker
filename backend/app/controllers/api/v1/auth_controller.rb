@@ -1,7 +1,6 @@
 module Api
   module V1
     class AuthController < BaseController
-
       def me
         render json: {
           id: current_user.id,

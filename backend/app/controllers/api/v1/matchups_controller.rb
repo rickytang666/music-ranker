@@ -5,11 +5,7 @@ module Api
       before_action :set_ranking
 
       def next
-        excluded = params[:skip_pairs].to_s.split(";").filter_map do |pair|
-          ids = pair.split(",").map(&:to_i)
-          ids.length == 2 ? ids : nil
-        end
-        result = MatchupSelectorService.call(@ranking, excluded_pairs: excluded)
+        result = MatchupSelectorService.call(@ranking, excluded_pairs: parse_skip_pairs)
         return render json: { error: "not enough songs" }, status: :unprocessable_entity unless result
 
         render json: { song_a: song_json(result[:song_a]), song_b: song_json(result[:song_b]) }
@@ -46,6 +42,13 @@ module Api
 
       private
 
+      def parse_skip_pairs
+        params[:skip_pairs].to_s.split(";").filter_map do |pair|
+          ids = pair.split(",").map(&:to_i)
+          ids.length == 2 ? ids : nil
+        end
+      end
+
       def set_ranking
         @ranking = current_user.rankings.find(params[:ranking_id])
       end
@@ -55,7 +58,7 @@ module Api
       end
 
       def song_json(song)
-        song.as_json(only: [ :id, :spotify_track_id, :title, :artist_name, :album_name, :album_art_url ])
+        song.as_json(only: Song::JSON_FIELDS)
       end
     end
   end
