@@ -59,10 +59,9 @@
       syncCountValue = Math.max(1, Math.min(rankedSongs.length, val));
   }
 
-  async function saveSync() {
+  async function patchSync(newCount: number | null) {
     syncSaving = true;
     try {
-      const newCount = autoSync ? syncCountValue : null;
       await api.patch(`/api/v1/rankings/${rankingId}`, {
         ranking: { spotify_sync_count: newCount },
       });
@@ -70,6 +69,11 @@
     } finally {
       syncSaving = false;
     }
+  }
+
+  async function toggleSync() {
+    autoSync = !autoSync;
+    await patchSync(autoSync ? syncCountValue : null);
   }
 
   function decrement() {
@@ -211,7 +215,8 @@
           <button
             class="switch"
             class:on={autoSync}
-            onclick={() => (autoSync = !autoSync)}
+            onclick={toggleSync}
+            disabled={syncSaving}
             role="switch"
             aria-checked={autoSync}
           >
@@ -247,20 +252,10 @@
             </div>
             <button
               class="save-sync-btn"
-              onclick={saveSync}
+              onclick={() => patchSync(syncCountValue)}
               disabled={syncSaving}
             >
               {syncSaving ? "saving…" : "save"}
-            </button>
-          </div>
-        {:else if syncCount !== null}
-          <div class="sync-row">
-            <button
-              class="save-sync-btn"
-              onclick={saveSync}
-              disabled={syncSaving}
-            >
-              {syncSaving ? "saving…" : "disable sync"}
             </button>
           </div>
         {/if}
