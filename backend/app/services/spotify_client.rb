@@ -6,13 +6,7 @@ class SpotifyClient
   class NotFoundError < StandardError; end
   class ServiceUnavailableError < StandardError; end
 
-  # Net::HTTP::Delete drops the body by default (REQUEST_HAS_BODY=false).
-  # Spotify's DELETE /playlists/{id}/tracks requires a JSON body, so we need this.
-  class DeleteWithBody < Net::HTTP::Delete
-    REQUEST_HAS_BODY = true
-  end
-
-  def initialize(user)
+def initialize(user)
     SpotifyTokenRefreshService.call(user)
     user.reload
     @token = user.access_token
@@ -47,11 +41,7 @@ class SpotifyClient
     post("/playlists/#{playlist_id}/items", { uris: uris })
   end
 
-  def delete_playlist_tracks(playlist_id, uris)
-    request(DeleteWithBody, "/playlists/#{playlist_id}/items", { items: uris.map { |u| { uri: u } } })
-  end
-
-  def update_playlist(playlist_id, name:)
+def update_playlist(playlist_id, name:)
     put("/playlists/#{playlist_id}", { name: name })
   end
 
