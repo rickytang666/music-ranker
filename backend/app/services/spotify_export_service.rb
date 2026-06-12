@@ -17,7 +17,7 @@ class SpotifyExportService
     client = SpotifyClient.new(@user)
     uris   = track_uris
     status = create_or_overwrite(client, uris)
-    @ranking.update!(spotify_last_export_count: @count)
+    @ranking.update_column(:spotify_last_export_count, @count)
     { status: status, playlist_url: "https://open.spotify.com/playlist/#{@ranking.spotify_playlist_id}" }
   end
 
@@ -44,24 +44,16 @@ class SpotifyExportService
   def create(client, uris)
     playlist = client.create_playlist(@name, public: @public)
     playlist_id = playlist["id"]
-    push_tracks(client, playlist_id, uris)
-    @ranking.update_columns(spotify_playlist_id: playlist_id, spotify_last_export_uris: uris.to_json)
+    uris.each_slice(BATCH_SIZE) { |batch| client.add_tracks_to_playlist(playlist_id, batch) }
+    @ranking.update_column(:spotify_playlist_id, playlist_id)
     :created
   end
 
   def overwrite(client, uris)
     playlist_id = @ranking.spotify_playlist_id
-    stored_uris = JSON.parse(@ranking.spotify_last_export_uris.presence || "[]")
-    stored_uris.each_slice(BATCH_SIZE) { |batch| client.delete_playlist_tracks(playlist_id, batch) }
-    push_tracks(client, playlist_id, uris)
+    client.replace_playlist_tracks(playlist_id, uris.first(BATCH_SIZE))
+    uris.drop(BATCH_SIZE).each_slice(BATCH_SIZE) { |batch| client.add_tracks_to_playlist(playlist_id, batch) }
     client.update_playlist(playlist_id, name: @name)
-    @ranking.update_column(:spotify_last_export_uris, uris.to_json)
     :updated
-  end
-
-  def push_tracks(client, playlist_id, uris)
-    uris.each_slice(BATCH_SIZE) do |batch|
-      client.add_tracks_to_playlist(playlist_id, batch)
-    end
   end
 end

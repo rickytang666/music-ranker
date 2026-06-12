@@ -39,6 +39,10 @@ class SpotifyClient
     post("/me/playlists", { name: name, public: public, description: "exported from music ranker" })
   end
 
+  def replace_playlist_tracks(playlist_id, uris)
+    put("/playlists/#{playlist_id}/items", { uris: uris })
+  end
+
   def add_tracks_to_playlist(playlist_id, uris)
     post("/playlists/#{playlist_id}/items", { uris: uris })
   end
