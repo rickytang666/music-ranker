@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_12_011326) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_12_012432) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -47,6 +47,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_011326) do
     t.string "name", null: false
     t.integer "spotify_last_export_count"
     t.string "spotify_playlist_id"
+    t.integer "spotify_sync_count"
+    t.boolean "spotify_sync_error", default: false, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_rankings_on_user_id"
