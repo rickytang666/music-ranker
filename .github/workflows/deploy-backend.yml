@@ -88,4 +88,4 @@ jobs:
           gcloud run services update music-ranker-api \
             --region us-central1 \
             --image gcr.io/music-ranker-495620/music-ranker-api:latest \
-            --set-env-vars "^|^DATABASE_URL=${{ secrets.DATABASE_URL }}|SPOTIFY_CLIENT_ID=${{ secrets.SPOTIFY_CLIENT_ID }}|SPOTIFY_CLIENT_SECRET=${{ secrets.SPOTIFY_CLIENT_SECRET }}|SPOTIFY_REDIRECT_URI=${{ secrets.SPOTIFY_REDIRECT_URI }}|JWT_SECRET=${{ secrets.JWT_SECRET }}|FRONTEND_ORIGIN=${{ secrets.FRONTEND_ORIGIN }}|RAILS_MASTER_KEY=${{ secrets.RAILS_MASTER_KEY }}"
+            --set-env-vars "^|^DATABASE_URL=${{ secrets.DATABASE_URL }}|SPOTIFY_CLIENT_ID=${{ secrets.SPOTIFY_CLIENT_ID }}|SPOTIFY_CLIENT_SECRET=${{ secrets.SPOTIFY_CLIENT_SECRET }}|SPOTIFY_REDIRECT_URI=${{ secrets.SPOTIFY_REDIRECT_URI }}|JWT_SECRET=${{ secrets.JWT_SECRET }}|FRONTEND_ORIGIN=${{ secrets.FRONTEND_ORIGIN }}|RAILS_MASTER_KEY=${{ secrets.RAILS_MASTER_KEY }}|INTERNAL_SYNC_SECRET=${{ secrets.INTERNAL_SYNC_SECRET }}"
