@@ -92,7 +92,8 @@
   });
 
   function nextUrl() {
-    if (shownPairs.length === 0) return `/api/v1/rankings/${rankingId}/matchups/next`;
+    if (shownPairs.length === 0)
+      return `/api/v1/rankings/${rankingId}/matchups/next`;
     return `/api/v1/rankings/${rankingId}/matchups/next?skip_pairs=${shownPairs.join(";")}`;
   }
 
@@ -132,7 +133,9 @@
     if (flaggingSong !== null) return;
     flaggingSong = songId;
     try {
-      const pairs = await api.get<Array<{ song_a: BaseSong; song_b: BaseSong }>>(
+      const pairs = await api.get<
+        Array<{ song_a: BaseSong; song_b: BaseSong }>
+      >(
         `/api/v1/rankings/${rankingId}/matchups/challenge?song_id=${songId}&flag_type=${type}`,
       );
       matchupStore.enqueue(pairs, songId, type);
@@ -153,13 +156,14 @@
     }
   }
 
-
   async function submitMatchup() {
     if (!matchup || matchupPhase !== "ready") return;
     matchupPhase = "picking";
     try {
-      const winnerId = confidence <= 0.5 ? matchup.song_a.id : matchup.song_b.id;
-      const normalizedConfidence = confidence <= 0.5 ? 1 - confidence : confidence;
+      const winnerId =
+        confidence <= 0.5 ? matchup.song_a.id : matchup.song_b.id;
+      const normalizedConfidence =
+        confidence <= 0.5 ? 1 - confidence : confidence;
       await api.post(`/api/v1/rankings/${rankingId}/matchups`, {
         matchup: {
           winner_id: winnerId,
@@ -182,21 +186,29 @@
   function onMouseMove(e: MouseEvent) {
     if (Date.now() - lastTouchTime < TOUCH_DEBOUNCE_MS) return;
     if (matchupPhase !== "ready" || !cardsAreaEl) return;
-    confidence = positionToConfidence(e.clientX, cardsAreaEl.getBoundingClientRect());
+    confidence = positionToConfidence(
+      e.clientX,
+      cardsAreaEl.getBoundingClientRect(),
+    );
   }
 
   function onTouchStart(e: TouchEvent) {
     lastTouchTime = Date.now();
     if (matchupPhase !== "ready" || !cardsAreaEl) return;
-    confidence = positionToConfidence(e.touches[0].clientX, cardsAreaEl.getBoundingClientRect());
+    confidence = positionToConfidence(
+      e.touches[0].clientX,
+      cardsAreaEl.getBoundingClientRect(),
+    );
   }
 
   function onTouchMove(e: TouchEvent) {
     lastTouchTime = Date.now();
     if (matchupPhase !== "ready" || !cardsAreaEl) return;
-    confidence = positionToConfidence(e.touches[0].clientX, cardsAreaEl.getBoundingClientRect());
+    confidence = positionToConfidence(
+      e.touches[0].clientX,
+      cardsAreaEl.getBoundingClientRect(),
+    );
   }
-
 
   async function onSongsAdded() {
     shownPairs = [];
@@ -215,7 +227,10 @@
 
   async function removeSong(songId: number) {
     const song = rankedSongs.find((s) => s.id === songId);
-    if (!confirm(`Remove "${song?.title ?? 'this song'}"? This cannot be undone.`)) return;
+    if (
+      !confirm(`Remove "${song?.title ?? "this song"}"? This cannot be undone.`)
+    )
+      return;
     try {
       await api.delete(`/api/v1/rankings/${rankingId}/songs/${songId}`);
       rankedSongs = rankedSongs.filter((s) => s.id !== songId);
@@ -235,12 +250,26 @@
     const tag = document.activeElement?.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA") return;
     if (!matchup || matchupPhase !== "ready") return;
-    if (e.key === "ArrowLeft") { e.preventDefault(); confidence = 0; submitMatchup(); }
-    if (e.key === "ArrowRight") { e.preventDefault(); confidence = 1; submitMatchup(); }
-    if (e.key === "Enter") { e.preventDefault(); submitMatchup(); }
-    if (e.key === "t" || e.key === "T") { e.preventDefault(); confidence = 0.5; submitMatchup(); }
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      confidence = 0;
+      submitMatchup();
+    }
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      confidence = 1;
+      submitMatchup();
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitMatchup();
+    }
+    if (e.key === "t" || e.key === "T") {
+      e.preventDefault();
+      confidence = 0.5;
+      submitMatchup();
+    }
   }
-
 </script>
 
 <svelte:window onkeydown={onKeydown} onmousemove={onMouseMove} />
@@ -268,12 +297,23 @@
       <p class="label">which do you prefer?</p>
       <p class="ranking-name">{ranking.name}</p>
       {#if matchupStore.queueLength() > 0}
-        <p class="queue-badge">{matchupStore.queueLength()} challenge{matchupStore.queueLength() === 1 ? '' : 's'} queued</p>
+        <p class="queue-badge">
+          {matchupStore.queueLength()} challenge{matchupStore.queueLength() ===
+          1
+            ? ""
+            : "s"} queued
+        </p>
       {/if}
     </div>
   {/if}
 
-  <div class="cards-area" role="region" bind:this={cardsAreaEl} ontouchstart={onTouchStart} ontouchmove={onTouchMove}>
+  <div
+    class="cards-area"
+    role="region"
+    bind:this={cardsAreaEl}
+    ontouchstart={onTouchStart}
+    ontouchmove={onTouchMove}
+  >
     {#if matchupPhase === "loading" || matchupPhase === "picking"}
       <div class="state-msg">
         <IconLoader2 size={24} class="spin" />
@@ -286,7 +326,13 @@
     {:else if matchupPhase === "error"}
       <div class="state-msg">
         <p class="state-title">something went wrong</p>
-        <button class="retry-btn" onclick={(e) => { e.stopPropagation(); loadNext(); }}>retry</button>
+        <button
+          class="retry-btn"
+          onclick={(e) => {
+            e.stopPropagation();
+            loadNext();
+          }}>retry</button
+        >
       </div>
     {:else if matchup}
       <div class="cards-row">
@@ -312,16 +358,40 @@
   {#if matchupPhase === "ready"}
     <div class="controls">
       <div class="hotkeys">
-        <div class="hotkey"><kbd><IconArrowLeft size={12} /></kbd><span>A wins</span></div>
-        <div class="hotkey"><kbd><IconArrowRight size={12} /></kbd><span>B wins</span></div>
-        <div class="hotkey"><kbd><IconCornerDownLeft size={12} /></kbd><span>confirm</span></div>
+        <div class="hotkey">
+          <kbd><IconArrowLeft size={12} /></kbd><span>A wins</span>
+        </div>
+        <div class="hotkey">
+          <kbd><IconArrowRight size={12} /></kbd><span>B wins</span>
+        </div>
+        <div class="hotkey">
+          <kbd><IconCornerDownLeft size={12} /></kbd><span>confirm</span>
+        </div>
         <div class="hotkey"><kbd>T</kbd><span>tie</span></div>
       </div>
       <div class="mobile-btns">
         <div class="mobile-row">
-          <button class="mob-btn" onclick={() => { confidence = 0; submitMatchup(); }}><IconArrowLeft size={14} /> A</button>
-          <button class="mob-btn" onclick={() => { confidence = 0.5; submitMatchup(); }}>tie</button>
-          <button class="mob-btn" onclick={() => { confidence = 1; submitMatchup(); }}>B <IconArrowRight size={14} /></button>
+          <button
+            class="mob-btn"
+            onclick={() => {
+              confidence = 0;
+              submitMatchup();
+            }}><IconArrowLeft size={14} /> A</button
+          >
+          <button
+            class="mob-btn"
+            onclick={() => {
+              confidence = 0.5;
+              submitMatchup();
+            }}>tie</button
+          >
+          <button
+            class="mob-btn"
+            onclick={() => {
+              confidence = 1;
+              submitMatchup();
+            }}>B <IconArrowRight size={14} /></button
+          >
         </div>
         <button class="mob-confirm-btn" onclick={submitMatchup}>confirm</button>
       </div>
@@ -334,8 +404,16 @@
   <div class="panel-header">
     <div class="panel-title">
       <div class="view-toggle">
-        <button class="view-btn" class:active={panelView === 'songs'} onclick={() => (panelView = 'songs')}>Songs</button>
-        <button class="view-btn" class:active={panelView === 'albums'} onclick={() => (panelView = 'albums')}>Albums</button>
+        <button
+          class="view-btn"
+          class:active={panelView === "songs"}
+          onclick={() => (panelView = "songs")}>Songs</button
+        >
+        <button
+          class="view-btn"
+          class:active={panelView === "albums"}
+          onclick={() => (panelView = "albums")}>Albums</button
+        >
       </div>
       {#if rankedSongs.length > 0}
         <span class="song-count">{rankedSongs.length} songs · sorted</span>
@@ -373,7 +451,11 @@
             </div>
           {/if}
         </div>
-        <button class="icon-btn spotify-btn" onclick={() => (spotifyExportOpen = true)} title="Export to Spotify">
+        <button
+          class="icon-btn spotify-btn"
+          onclick={() => (spotifyExportOpen = true)}
+          title="Export to Spotify"
+        >
           <IconUpload size={14} />
         </button>
         <button class="icon-btn" onclick={resetRanking} title="Reset ranking">
@@ -394,8 +476,13 @@
     <div class="empty-list">
       <p>add songs to start ranking</p>
     </div>
-  {:else if panelView === 'songs'}
-    <RankedList songs={rankedSongs} onRemove={removeSong} onFlag={flag} {flaggingSong} />
+  {:else if panelView === "songs"}
+    <RankedList
+      songs={rankedSongs}
+      onRemove={removeSong}
+      onFlag={flag}
+      {flaggingSong}
+    />
   {:else}
     <AlbumList songs={rankedSongs} />
   {/if}
@@ -416,9 +503,19 @@
     rankingName={ranking.name}
     spotifyPlaylistId={ranking.spotify_playlist_id ?? null}
     lastExportCount={ranking.spotify_last_export_count ?? null}
+    syncCount={ranking.spotify_sync_count ?? null}
+    syncError={ranking.spotify_sync_error}
     {rankedSongs}
     onClose={() => (spotifyExportOpen = false)}
-    onExported={(playlistId, exportedCount) => rankings.update({ ...ranking, spotify_playlist_id: playlistId, spotify_last_export_count: exportedCount })}
+    onExported={(playlistId, exportedCount) =>
+      rankings.update({
+        ...ranking,
+        spotify_playlist_id: playlistId,
+        spotify_last_export_count: exportedCount,
+        spotify_sync_error: false,
+      })}
+    onSyncUpdated={(newSyncCount) =>
+      rankings.update({ ...ranking, spotify_sync_count: newSyncCount })}
   />
 {/if}
 
@@ -661,7 +758,9 @@
     text-transform: uppercase;
     cursor: pointer;
     color: var(--muted);
-    transition: background 0.1s, color 0.1s;
+    transition:
+      background 0.1s,
+      color 0.1s;
   }
   .view-btn.active {
     background: var(--paper);
@@ -771,13 +870,28 @@
 
   /* tablet: two panels, compact, sidebar in drawer */
   @media (min-width: 769px) and (max-width: 1199px) {
-    .right-panel { width: 340px; }
-    .center { padding: 32px 28px; gap: 24px; }
-    .cards-row { gap: 40px; }
+    .right-panel {
+      width: 340px;
+    }
+    .center {
+      padding: 32px 28px;
+      gap: 24px;
+    }
+    .cards-row {
+      gap: 40px;
+    }
     /* remove flex:1 so justify-content:center on .center centers the whole block */
-    .cards-area { flex: none; gap: 24px; min-height: 200px; }
-    .ranking-name { font-size: 22px; }
-    .hotkeys { display: none; }
+    .cards-area {
+      flex: none;
+      gap: 24px;
+      min-height: 200px;
+    }
+    .ranking-name {
+      font-size: 22px;
+    }
+    .hotkeys {
+      display: none;
+    }
     .mobile-btns {
       display: flex;
       flex-direction: column;
@@ -823,10 +937,18 @@
       border-right: none;
       gap: 12px;
     }
-    .ranking-name { font-size: 18px; }
-    .cards-area { gap: 12px; }
-    .cards-row { gap: 32px; }
-    .hotkeys { display: none; }
+    .ranking-name {
+      font-size: 18px;
+    }
+    .cards-area {
+      gap: 12px;
+    }
+    .cards-row {
+      gap: 32px;
+    }
+    .hotkeys {
+      display: none;
+    }
 
     .mobile-btns {
       display: flex;

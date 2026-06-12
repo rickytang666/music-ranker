@@ -9,6 +9,7 @@
     IconPencil,
     IconTrash,
     IconLogout,
+    IconRefresh,
   } from "@tabler/icons-svelte";
   import { onMount } from "svelte";
   import { api } from "$lib/api";
@@ -25,11 +26,13 @@
   let effectiveCollapsed = $derived(collapsed && !isMobile);
 
   onMount(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
+    const mq = window.matchMedia("(max-width: 640px)");
     isMobile = mq.matches;
-    const handler = (e: MediaQueryListEvent) => { isMobile = e.matches; };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    const handler = (e: MediaQueryListEvent) => {
+      isMobile = e.matches;
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
   });
   let creating = $state(false);
   let newName = $state("");
@@ -76,9 +79,12 @@
   async function submitRename() {
     if (!renameValue.trim() || !renamingId) return;
     try {
-      const updated = await api.patch<Ranking>(`/api/v1/rankings/${renamingId}`, {
-        ranking: { name: renameValue.trim() },
-      });
+      const updated = await api.patch<Ranking>(
+        `/api/v1/rankings/${renamingId}`,
+        {
+          ranking: { name: renameValue.trim() },
+        },
+      );
       rankings.update(updated);
       renamingId = null;
     } catch {
@@ -87,9 +93,9 @@
   }
 
   async function logout() {
-    await api.delete('/api/v1/auth/logout').catch(() => {});
+    await api.delete("/api/v1/auth/logout").catch(() => {});
     auth.clear();
-    goto('/login');
+    goto("/login");
   }
 
   async function deleteRanking(ranking: Ranking) {
@@ -104,7 +110,11 @@
   }
 </script>
 
-<aside class="sidebar" class:collapsed={effectiveCollapsed} class:drawer-open={drawerOpen}>
+<aside
+  class="sidebar"
+  class:collapsed={effectiveCollapsed}
+  class:drawer-open={drawerOpen}
+>
   <div class="header">
     {#if !collapsed}
       <span class="label">Rankings</span>
@@ -145,7 +155,11 @@
               if (e.key === "Escape") cancelRename();
             }}
           />
-          <button class="icon-btn" onclick={submitRename} disabled={!renameValue.trim()}>
+          <button
+            class="icon-btn"
+            onclick={submitRename}
+            disabled={!renameValue.trim()}
+          >
             <IconCheck size={13} />
           </button>
           <button class="icon-btn" onclick={cancelRename}>
@@ -155,11 +169,30 @@
       {:else}
         <div class="tab-row" class:active={ranking.id === activeId}>
           <a class="tab-link" href="/rankings/{ranking.id}">{ranking.name}</a>
+          {#if ranking.spotify_sync_count !== null}
+            <span
+              class="sync-dot"
+              class:error={ranking.spotify_sync_error}
+              title={ranking.spotify_sync_error
+                ? "auto-sync paused"
+                : "auto-sync on"}
+            >
+              <IconRefresh size={10} />
+            </span>
+          {/if}
           <div class="tab-actions">
-            <button class="tab-icon-btn" onclick={() => startRename(ranking)} title="Rename">
+            <button
+              class="tab-icon-btn"
+              onclick={() => startRename(ranking)}
+              title="Rename"
+            >
               <IconPencil size={12} />
             </button>
-            <button class="tab-icon-btn danger" onclick={() => deleteRanking(ranking)} title="Delete">
+            <button
+              class="tab-icon-btn danger"
+              onclick={() => deleteRanking(ranking)}
+              title="Delete"
+            >
               <IconTrash size={12} />
             </button>
           </div>
@@ -255,7 +288,9 @@
     .sidebar.drawer-open {
       transform: translateX(0);
     }
-    .header .icon-btn { display: none; }
+    .header .icon-btn {
+      display: none;
+    }
   }
 
   .header {
@@ -363,8 +398,25 @@
     padding: 0;
     transition: color 0.1s;
   }
-  .tab-icon-btn:hover { color: var(--ink); background: none; }
-  .tab-icon-btn.danger:hover { color: #c0392b; background: none; }
+  .tab-icon-btn:hover {
+    color: var(--ink);
+    background: none;
+  }
+  .tab-icon-btn.danger:hover {
+    color: #c0392b;
+    background: none;
+  }
+
+  .sync-dot {
+    display: flex;
+    align-items: center;
+    color: #1db954;
+    flex-shrink: 0;
+    opacity: 0.8;
+  }
+  .sync-dot.error {
+    color: var(--accent);
+  }
 
   .rename-row {
     padding: 6px 6px 6px 8px;
@@ -487,7 +539,9 @@
     background: none;
     color: var(--muted);
     cursor: pointer;
-    transition: color 0.1s, background 0.1s;
+    transition:
+      color 0.1s,
+      background 0.1s;
   }
   .logout-btn:hover {
     color: #c0392b;
@@ -505,7 +559,9 @@
     background: none;
     color: var(--muted);
     cursor: pointer;
-    transition: color 0.1s, background 0.1s;
+    transition:
+      color 0.1s,
+      background 0.1s;
   }
   .glyph-logout:hover {
     color: #c0392b;
