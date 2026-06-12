@@ -3,7 +3,7 @@ module Api
     class RankingsController < BaseController
       before_action :set_ranking, only: [:update, :destroy, :reset]
 
-      RANKING_FIELDS = [:id, :name, :created_at, :spotify_playlist_id, :spotify_last_export_count].freeze
+      RANKING_FIELDS = [:id, :name, :created_at, :spotify_playlist_id, :spotify_last_export_count, :spotify_sync_count, :spotify_sync_error].freeze
 
       def index
         rankings = current_user.rankings.order(created_at: :desc)
@@ -45,7 +45,7 @@ module Api
       end
 
       def ranking_params
-        params.require(:ranking).permit(:name)
+        params.require(:ranking).permit(:name, :spotify_sync_count)
       end
     end
   end

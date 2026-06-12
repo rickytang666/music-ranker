@@ -2,6 +2,10 @@ Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
   get "health" => "rails/health#show"
 
+  namespace :internal do
+    post "sync/rankings", to: "sync#rankings"
+  end
+
   get "/auth/spotify/callback", to: "auth#callback"
   get "/auth/failure", to: "auth#failure"
 

@@ -19,6 +19,7 @@ module Api
         public  = ActiveModel::Type::Boolean.new.cast(params[:public]) || false
 
         result = SpotifyExportService.call(current_user, ranking, name: name, count: count, public: public)
+        ranking.update_column(:spotify_sync_error, false) if ranking.spotify_sync_error?
         render json: result
       rescue => e
         Rails.logger.error "spotify export error: #{e.class}: #{e.message}"
