@@ -31,8 +31,10 @@
 
   type Phase = "idle" | "loading" | "success" | "error" | "reauth";
 
+  const DEFAULT_COUNT = 20;
+
   let name = $state(rankingName);
-  let count = $state(Math.min(lastExportCount ?? 20, rankedSongs.length));
+  let count = $state(Math.min(lastExportCount ?? DEFAULT_COUNT, rankedSongs.length));
   let isPublic = $state(false);
   let phase = $state<Phase>("idle");
   let resultMsg = $state("");
@@ -40,7 +42,7 @@
 
   let autoSync = $state(syncCount !== null);
   let syncCountValue = $state(
-    Math.min(syncCount ?? lastExportCount ?? 20, rankedSongs.length),
+    Math.min(syncCount ?? lastExportCount ?? DEFAULT_COUNT, rankedSongs.length),
   );
   let syncSaving = $state(false);
 
@@ -53,10 +55,13 @@
   function incrementSync() {
     if (syncCountValue < rankedSongs.length) syncCountValue++;
   }
-  function onSyncCountInput(e: Event) {
+  function parseCount(e: Event, max: number): number {
     const val = parseInt((e.target as HTMLInputElement).value);
-    if (!isNaN(val))
-      syncCountValue = Math.max(1, Math.min(rankedSongs.length, val));
+    return isNaN(val) ? max : Math.max(1, Math.min(max, val));
+  }
+
+  function onSyncCountInput(e: Event) {
+    syncCountValue = parseCount(e, rankedSongs.length);
   }
 
   async function patchSync(newCount: number | null) {
@@ -84,8 +89,7 @@
   }
 
   function onCountInput(e: Event) {
-    const val = parseInt((e.target as HTMLInputElement).value);
-    if (!isNaN(val)) count = Math.max(1, Math.min(rankedSongs.length, val));
+    count = parseCount(e, rankedSongs.length);
   }
 
   async function submit() {
@@ -113,6 +117,30 @@
     }
   }
 </script>
+
+{#snippet stepper(value: number, onDecrement: () => void, onIncrement: () => void, oninput: (e: Event) => void, label: string)}
+  <div class="stepper">
+    <button class="step-btn" onclick={onDecrement} disabled={value <= 1}>
+      <IconMinus size={12} />
+    </button>
+    <input
+      class="count-input"
+      type="number"
+      min={1}
+      max={rankedSongs.length}
+      {value}
+      {oninput}
+    />
+    <button
+      class="step-btn"
+      onclick={onIncrement}
+      disabled={value >= rankedSongs.length}
+    >
+      <IconPlus size={12} />
+    </button>
+    <span class="count-of">{label}</span>
+  </div>
+{/snippet}
 
 <Modal title="export to spotify" {onClose}>
   {#if phase === "success"}
@@ -170,27 +198,7 @@
 
       <div class="field">
         <span class="label">songs to export</span>
-        <div class="stepper">
-          <button class="step-btn" onclick={decrement} disabled={count <= 1}>
-            <IconMinus size={12} />
-          </button>
-          <input
-            class="count-input"
-            type="number"
-            min={1}
-            max={rankedSongs.length}
-            value={count}
-            oninput={onCountInput}
-          />
-          <button
-            class="step-btn"
-            onclick={increment}
-            disabled={count >= rankedSongs.length}
-          >
-            <IconPlus size={12} />
-          </button>
-          <span class="count-of">of {rankedSongs.length}</span>
-        </div>
+        {@render stepper(count, decrement, increment, onCountInput, `of ${rankedSongs.length}`)}
       </div>
 
       <div class="field visibility-field">
@@ -225,31 +233,7 @@
         </div>
         {#if autoSync}
           <div class="sync-row">
-            <div class="stepper">
-              <button
-                class="step-btn"
-                onclick={decrementSync}
-                disabled={syncCountValue <= 1}
-              >
-                <IconMinus size={12} />
-              </button>
-              <input
-                class="count-input"
-                type="number"
-                min={1}
-                max={rankedSongs.length}
-                value={syncCountValue}
-                oninput={onSyncCountInput}
-              />
-              <button
-                class="step-btn"
-                onclick={incrementSync}
-                disabled={syncCountValue >= rankedSongs.length}
-              >
-                <IconPlus size={12} />
-              </button>
-              <span class="count-of">top songs synced daily</span>
-            </div>
+            {@render stepper(syncCountValue, decrementSync, incrementSync, onSyncCountInput, "top songs synced daily")}
             <button
               class="save-sync-btn"
               onclick={() => patchSync(syncCountValue)}
