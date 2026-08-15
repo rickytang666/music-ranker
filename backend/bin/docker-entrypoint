@@ -1,8 +1,5 @@
 #!/bin/bash -e
 
-# If running the rails server then create or migrate existing database
-if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ] && [ -n "$DATABASE_URL" ]; then
-  ./bin/rails db:prepare
-fi
-
+# migrations run in the deploy workflow, not here: booting rails twice per
+# container start was the bulk of the cold start on cloud run
 exec "${@}"

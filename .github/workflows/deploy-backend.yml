@@ -83,9 +83,30 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.3.6
+          bundler-cache: true
+          working-directory: backend
+
+      - name: run migrations
+        working-directory: backend
+        env:
+          RAILS_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+        run: bin/rails db:migrate
+
       - name: deploy to cloud run
         run: |
-          gcloud run services update music-ranker-api \
-            --region us-central1 \
+          gcloud run deploy music-ranker-api \
+            --region us-east4 \
             --image gcr.io/music-ranker-495620/music-ranker-api:latest \
+            --allow-unauthenticated \
+            --cpu 1 \
+            --memory 512Mi \
+            --cpu-boost \
+            --concurrency 80 \
+            --timeout 300 \
+            --max-instances 20 \
             --set-env-vars "^|^DATABASE_URL=${{ secrets.DATABASE_URL }}|SPOTIFY_CLIENT_ID=${{ secrets.SPOTIFY_CLIENT_ID }}|SPOTIFY_CLIENT_SECRET=${{ secrets.SPOTIFY_CLIENT_SECRET }}|SPOTIFY_REDIRECT_URI=${{ secrets.SPOTIFY_REDIRECT_URI }}|JWT_SECRET=${{ secrets.JWT_SECRET }}|FRONTEND_ORIGIN=${{ secrets.FRONTEND_ORIGIN }}|RAILS_MASTER_KEY=${{ secrets.RAILS_MASTER_KEY }}|INTERNAL_SYNC_SECRET=${{ secrets.INTERNAL_SYNC_SECRET }}"
