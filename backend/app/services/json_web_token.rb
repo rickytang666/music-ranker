@@ -11,7 +11,12 @@ module JsonWebToken
   def self.decode(token)
     decoded = JWT.decode(token, SECRET, true, { algorithm: ALGORITHM })
     HashWithIndifferentAccess.new(decoded.first)
-  rescue JWT::DecodeError
+  rescue JWT::ExpiredSignature
+    Rails.logger.info "jwt expired"
+    nil
+  rescue JWT::DecodeError => e
+    # not expiry: malformed, wrong signature, or tampered
+    Rails.logger.warn "jwt rejected: #{e.class}: #{e.message}"
     nil
   end
 end
