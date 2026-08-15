@@ -7,8 +7,7 @@
 
   const publicRoutes = ["/login", "/auth/callback"];
 
-  // ssr is disabled, so localStorage is available here synchronously.
-  // must run before child layouts mount so their onMount sees a valid token.
+  // must run before child layouts mount so their onMount sees a valid token
   auth.init();
 
   $effect(() => {

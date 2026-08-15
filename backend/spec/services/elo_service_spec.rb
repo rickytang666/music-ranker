@@ -83,8 +83,7 @@ RSpec.describe EloService do
       end
 
       it "produces larger swings at higher confidence than lower confidence" do
-        # use balanced matchup (1550 vs 1500) where expected_score is close to 0.5
-        # compare 0.9 vs 0.6
+        # balanced matchup (1550 vs 1500, expected_score ~0.5) isolates confidence's effect on swing size
         swings_09 = []
         3.times do
           balanced_winner_rs.update!(elo_score: 1550.0)
