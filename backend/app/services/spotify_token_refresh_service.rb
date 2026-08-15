@@ -29,7 +29,11 @@ class SpotifyTokenRefreshService
     req.body = URI.encode_www_form(grant_type: "refresh_token", refresh_token: @user.refresh_token)
 
     res = http.request(req)
-    raise "spotify token refresh failed: #{res.code}" unless res.is_a?(Net::HTTPSuccess)
+    unless res.is_a?(Net::HTTPSuccess)
+      # otherwise this surfaces as a generic sync failure blamed on the ranking
+      Rails.logger.error "spotify token refresh failed: user #{@user.id} got #{res.code}"
+      raise "spotify token refresh failed: #{res.code}"
+    end
 
     JSON.parse(res.body)
   end
