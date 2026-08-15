@@ -61,12 +61,19 @@ def update_playlist(playlist_id, name:)
 
   def check_response!(res)
     case res.code
-    when "429" then raise RateLimitError, "spotify rate limit — try again in #{res["Retry-After"] || "a moment"}"
-    when "403" then raise ForbiddenError, "spotify api error 403: #{res.body}"
-    when "404" then raise NotFoundError, "spotify api error 404: #{res.body}"
-    when "502", "503" then raise ServiceUnavailableError, "spotify api error #{res.code}: #{res.body}"
+    when "429" then raise RateLimitError, "spotify rate limit, try again in #{res["Retry-After"] || "a moment"}"
+    when "403" then raise ForbiddenError, "spotify api error 403: #{error_detail(res)}"
+    when "404" then raise NotFoundError, "spotify api error 404: #{error_detail(res)}"
+    when "502", "503" then raise ServiceUnavailableError, "spotify api error #{res.code}: #{error_detail(res)}"
     end
-    raise "spotify api error #{res.code}: #{res.body}" unless res.is_a?(Net::HTTPSuccess) || res.is_a?(Net::HTTPNoContent)
+    raise "spotify api error #{res.code}: #{error_detail(res)}" unless res.is_a?(Net::HTTPSuccess) || res.is_a?(Net::HTTPNoContent)
+  end
+
+  # message field only, these strings reach the client too
+  def error_detail(res)
+    JSON.parse(res.body.to_s).dig("error", "message").presence || "no message"
+  rescue JSON::ParserError, TypeError
+    "unparseable body (#{res.body.to_s.bytesize} bytes)"
   end
 
   def build_http(uri)
