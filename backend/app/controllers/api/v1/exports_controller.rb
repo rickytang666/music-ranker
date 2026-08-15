@@ -34,8 +34,11 @@ module Api
           render json: { error: "spotify_scope_required" }, status: :forbidden
         when SpotifyClient::ServiceUnavailableError
           render json: { error: "spotify is temporarily unavailable, try again in a moment" }, status: :service_unavailable
-        else
+        when SpotifyClient::RateLimitError, SpotifyClient::NotFoundError
           render json: { error: e.message }, status: :unprocessable_entity
+        else
+          # anything else carries internal detail, it is already logged above
+          render json: { error: "export failed, try again" }, status: :unprocessable_entity
         end
       end
     end
