@@ -96,15 +96,15 @@
     if (phase === "loading") return;
     phase = "loading";
     try {
-      const result = await api.post<{ status: string; playlist_url: string }>(
+      const exportResult = await api.post<{ status: string; playlist_url: string }>(
         `/api/v1/rankings/${rankingId}/export/spotify`,
         { name: name.trim() || rankingName, count, public: isPublic },
       );
-      playlistUrl = result.playlist_url;
+      playlistUrl = exportResult.playlist_url;
       resultMsg =
-        result.status === "created" ? "playlist created" : "playlist updated";
+        exportResult.status === "created" ? "playlist created" : "playlist updated";
       phase = "success";
-      const id = result.playlist_url.split("/").pop() ?? "";
+      const id = exportResult.playlist_url.split("/").pop() ?? "";
       onExported(id, count);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

@@ -15,7 +15,7 @@ module Api
         song_ids = params.require(:song_ids)
         songs = Song.where(id: song_ids)
 
-        added = songs.filter_map do |song|
+        added = songs.map do |song|
           RankingSong.find_or_create_by(ranking: @ranking, song: song)
         end
 

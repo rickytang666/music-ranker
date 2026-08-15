@@ -119,8 +119,7 @@
     fromQueue = false;
     matchupPhase = "loading";
     try {
-      const result = await api.get<Matchup>(nextUrl());
-      matchup = result;
+      matchup = await api.get<Matchup>(nextUrl());
       confidence = 0.5;
       matchupPhase = "ready";
     } catch (err: unknown) {
@@ -192,16 +191,7 @@
     );
   }
 
-  function onTouchStart(e: TouchEvent) {
-    lastTouchTime = Date.now();
-    if (matchupPhase !== "ready" || !cardsAreaEl) return;
-    confidence = positionToConfidence(
-      e.touches[0].clientX,
-      cardsAreaEl.getBoundingClientRect(),
-    );
-  }
-
-  function onTouchMove(e: TouchEvent) {
+  function updateConfidenceFromTouch(e: TouchEvent) {
     lastTouchTime = Date.now();
     if (matchupPhase !== "ready" || !cardsAreaEl) return;
     confidence = positionToConfidence(
@@ -311,8 +301,8 @@
     class="cards-area"
     role="region"
     bind:this={cardsAreaEl}
-    ontouchstart={onTouchStart}
-    ontouchmove={onTouchMove}
+    ontouchstart={updateConfidenceFromTouch}
+    ontouchmove={updateConfidenceFromTouch}
   >
     {#if matchupPhase === "loading" || matchupPhase === "picking"}
       <div class="state-msg">

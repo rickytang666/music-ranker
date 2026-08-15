@@ -6,7 +6,7 @@ class SpotifyClient
   class NotFoundError < StandardError; end
   class ServiceUnavailableError < StandardError; end
 
-def initialize(user)
+  def initialize(user)
     SpotifyTokenRefreshService.call(user)
     user.reload
     @token = user.access_token
@@ -41,7 +41,7 @@ def initialize(user)
     post("/playlists/#{playlist_id}/items", { uris: uris })
   end
 
-def update_playlist(playlist_id, name:)
+  def update_playlist(playlist_id, name:)
     put("/playlists/#{playlist_id}", { name: name })
   end
 

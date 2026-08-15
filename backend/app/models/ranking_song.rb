@@ -4,6 +4,7 @@ class RankingSong < ApplicationRecord
   belongs_to :ranking
   belongs_to :song
 
+  # tie-break by release date (as yyyymmdd int, missing dates sort last)
   scope :ranked_order, -> {
     includes(:song).sort_by { |rs| [-rs.elo_score, -(rs.song.release_date || "0").tr("-", "").to_i] }
   }

@@ -13,12 +13,12 @@ module Api
       end
 
       def spotify
-        ranking = current_user.rankings.find(params[:ranking_id])
-        name    = params[:name].presence || ranking.name
-        count   = (params[:count] || ranking.spotify_last_export_count || 20).to_i.clamp(1, ranking.ranking_songs.count)
-        public  = ActiveModel::Type::Boolean.new.cast(params[:public]) || false
+        ranking   = current_user.rankings.find(params[:ranking_id])
+        name      = params[:name].presence || ranking.name
+        count     = (params[:count] || ranking.spotify_last_export_count || 20).to_i.clamp(1, ranking.ranking_songs.count)
+        is_public = ActiveModel::Type::Boolean.new.cast(params[:public]) || false
 
-        result = SpotifyExportService.call(current_user, ranking, name: name, count: count, public: public)
+        result = SpotifyExportService.call(current_user, ranking, name: name, count: count, public: is_public)
         ranking.update_column(:spotify_sync_error, false) if ranking.spotify_sync_error?
         render json: result
       rescue => e

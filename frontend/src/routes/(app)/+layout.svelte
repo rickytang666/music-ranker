@@ -29,9 +29,9 @@
 
 	onMount(async () => {
 		try {
-			const data = await api.get<typeof rankings.list>('/api/v1/rankings');
-			rankings.set(data);
-			localStorage.setItem(RANKINGS_CACHE, JSON.stringify(data));
+			const fetchedRankings = await api.get<typeof rankings.list>('/api/v1/rankings');
+			rankings.set(fetchedRankings);
+			localStorage.setItem(RANKINGS_CACHE, JSON.stringify(fetchedRankings));
 		} catch (e) {
 			// non-critical, but silence made an empty sidebar look like a blocked request
 			console.error('[sidebar] rankings fetch failed, showing cached data', e);

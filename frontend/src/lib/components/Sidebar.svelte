@@ -23,16 +23,17 @@
 
   let collapsed = $state(false);
   let isMobile = $state(false);
-  let effectiveCollapsed = $derived(collapsed && !isMobile);
+  // mobile always renders expanded (drawer), so collapse only applies on desktop
+  let isCollapsedView = $derived(collapsed && !isMobile);
 
   onMount(() => {
     const mq = window.matchMedia("(max-width: 640px)");
     isMobile = mq.matches;
-    const handler = (e: MediaQueryListEvent) => {
+    const handleMediaQueryChange = (e: MediaQueryListEvent) => {
       isMobile = e.matches;
     };
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    mq.addEventListener("change", handleMediaQueryChange);
+    return () => mq.removeEventListener("change", handleMediaQueryChange);
   });
   let creating = $state(false);
   let newName = $state("");
@@ -112,7 +113,7 @@
 
 <aside
   class="sidebar"
-  class:collapsed={effectiveCollapsed}
+  class:collapsed={isCollapsedView}
   class:drawer-open={drawerOpen}
 >
   <div class="header">
@@ -124,7 +125,7 @@
       onclick={() => (collapsed = !collapsed)}
       title={collapsed ? "Expand" : "Collapse"}
     >
-      {#if effectiveCollapsed}
+      {#if isCollapsedView}
         <IconChevronRight size={16} />
       {:else}
         <IconChevronLeft size={16} />
@@ -134,7 +135,7 @@
 
   <nav class="tabs">
     {#each rankings.list as ranking (ranking.id)}
-      {#if effectiveCollapsed}
+      {#if isCollapsedView}
         <a
           class="glyph-tab"
           class:active={ranking.id === activeId}
@@ -202,7 +203,7 @@
   </nav>
 
   <div class="footer">
-    {#if effectiveCollapsed}
+    {#if isCollapsedView}
       <button
         class="glyph-add"
         onclick={() => {
