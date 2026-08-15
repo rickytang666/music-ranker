@@ -4,3 +4,5 @@
 prototypes/
 prototypes/*
 prototypes/**/*
+.vercel
+.env*
