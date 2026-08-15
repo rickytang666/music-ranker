@@ -3,8 +3,7 @@ module Internal
     before_action :authenticate_internal!
 
     def rankings
-      SpotifySyncService.call
-      head :ok
+      render json: SpotifySyncService.call
     end
 
     private
