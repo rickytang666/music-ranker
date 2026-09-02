@@ -6,3 +6,5 @@ prototypes/*
 prototypes/**/*
 .vercel
 .env*
+
+backlog/
