@@ -102,6 +102,19 @@
 
   let pendingDelete = $state<Ranking | null>(null);
 
+  let accountName = $derived(auth.user?.display_name?.trim() || "your account");
+  // the avatar is captured at sign-in, so anyone who has not logged in since
+  // it shipped has none: initials are the normal case, not an error case
+  let initials = $derived(
+    accountName
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => [...w][0] ?? "")
+      .join("")
+      .toUpperCase(),
+  );
+  let avatarFailed = $state(false);
+
   // errors propagate so the confirmation dialog can stay open and report them
   async function deleteRanking(ranking: Ranking) {
     await api.delete(`/api/v1/rankings/${ranking.id}`);
@@ -247,10 +260,19 @@
         <IconPlus size={14} />
         New Ranking
       </button>
-      <button class="logout-btn" onclick={logout}>
-        <IconLogout size={14} />
-        Log out
-      </button>
+      <div class="account">
+        <div class="avatar" aria-hidden="true">
+          {#if auth.user?.image_url && !avatarFailed}
+            <img src={auth.user.image_url} alt="" onerror={() => (avatarFailed = true)} />
+          {:else}
+            <span class="initials">{initials}</span>
+          {/if}
+        </div>
+        <span class="account-name" title={accountName}>{accountName}</span>
+        <button class="logout-btn" onclick={logout} title="Log out" aria-label="Log out">
+          <IconLogout size={14} />
+        </button>
+      </div>
     {/if}
   </div>
 </aside>
@@ -540,20 +562,66 @@
     justify-content: flex-end;
   }
 
+  .account {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 4px 6px 6px;
+    min-width: 0;
+  }
+  .avatar {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 1px solid var(--line-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-hover);
+  }
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .initials {
+    font-family: var(--font-ui);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--text-muted);
+  }
+  /* min-width 0 on both the row and this child is what lets a long name
+     actually truncate instead of forcing the sidebar wider */
+  .account-name {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-serif);
+    font-size: 14px;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .logout-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    width: 100%;
+    flex-shrink: 0;
     border: none;
     border-radius: 6px;
-    padding: 8px 10px;
-    font-family: var(--font-serif);
-    font-size: 14px;
+    padding: 6px;
     background: none;
     color: var(--text-muted);
     cursor: pointer;
+    transition:
+      color 0.1s,
+      background 0.1s;
     transition:
       color 0.1s,
       background 0.1s;

@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { api } from '$lib/api';
 	import { rankings } from '$lib/stores/rankings.svelte';
+	import { auth } from '$lib/stores/auth.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { IconMenu2 } from '@tabler/icons-svelte';
 
@@ -28,6 +29,12 @@
 	});
 
 	onMount(async () => {
+		// a 401 here redirects via the api layer, so it needs no special case
+		api
+			.get<Parameters<typeof auth.setUser>[0]>('/api/v1/auth/me')
+			.then(auth.setUser)
+			.catch((e) => console.error('[account] failed to load current user', e));
+
 		try {
 			const fetchedRankings = await api.get<typeof rankings.list>('/api/v1/rankings');
 			rankings.set(fetchedRankings);

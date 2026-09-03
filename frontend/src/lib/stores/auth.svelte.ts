@@ -1,6 +1,7 @@
 interface User {
     spotify_id: string;
     display_name: string | null;
+    image_url: string | null;
 }
 
 let token = $state<string | null>(null);
