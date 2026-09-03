@@ -15,12 +15,52 @@
 		children: import('svelte').Snippet;
 	} = $props();
 
+	let modalEl = $state<HTMLElement | null>(null);
+
+	// focus used to stay on the trigger behind the dialog, which contradicted
+	// aria-modal and left keyboard users tabbing through the page to reach it
+	$effect(() => {
+		const previous = document.activeElement as HTMLElement | null;
+		const t = setTimeout(() => {
+			// a child that manages its own focus, like a typed confirm, wins
+			if (modalEl && !modalEl.contains(document.activeElement)) modalEl.focus();
+		}, 0);
+		return () => {
+			clearTimeout(t);
+			previous?.focus?.();
+		};
+	});
+
+	function focusables(): HTMLElement[] {
+		if (!modalEl) return [];
+		return [
+			...modalEl.querySelectorAll<HTMLElement>(
+				'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+			)
+		].filter((el) => el.offsetParent !== null);
+	}
+
 	function onOverlayClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) onClose();
 	}
 
 	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') onClose();
+		if (e.key === 'Escape') {
+			onClose();
+			return;
+		}
+		if (e.key !== 'Tab') return;
+		const f = focusables();
+		if (f.length === 0) return;
+		const first = f[0];
+		const last = f[f.length - 1];
+		if (e.shiftKey && document.activeElement === first) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && document.activeElement === last) {
+			e.preventDefault();
+			first.focus();
+		}
 	}
 </script>
 
@@ -29,7 +69,15 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="overlay" onclick={onOverlayClick}>
-	<div class="modal" role="dialog" aria-modal="true" style="width: {width}">
+	<div
+		class="modal"
+		role="dialog"
+		aria-modal="true"
+		aria-label={title}
+		tabindex="-1"
+		bind:this={modalEl}
+		style="width: {width}"
+	>
 		<header>
 			<div class="header-text">
 				<span class="modal-title">{title}</span>
