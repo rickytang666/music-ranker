@@ -1,7 +1,7 @@
 <script lang="ts">
   import { IconMinus, IconPlus, IconExternalLink } from "@tabler/icons-svelte";
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
-  import { api } from "$lib/api";
+  import { api, ApiError, describeError } from "$lib/api";
   import type { RankedSong } from "$lib/types";
   import Modal from "./Modal.svelte";
 
@@ -39,21 +39,78 @@
   let phase = $state<Phase>("idle");
   let resultMsg = $state("");
   let playlistUrl = $state("");
+  // snapshot at submit time: editing the form afterwards must not rewrite history
+  let exportedName = $state("");
+  let exportedCount = $state(0);
+  let exportedPublic = $state(false);
 
   let autoSync = $state(syncCount !== null);
   let syncCountValue = $state(
     Math.min(syncCount ?? lastExportCount ?? DEFAULT_COUNT, rankedSongs.length),
   );
   let syncSaving = $state(false);
+  // the sync setting used to need a separate save press, and skipping it
+  // discarded the change silently; it now persists on its own
+  let syncStatus = $state<"idle" | "saving" | "saved" | "failed">("idle");
+  let syncSaveError = $state("");
+  let syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function queueSyncSave() {
+    if (!autoSync) return;
+    if (syncTimer) clearTimeout(syncTimer);
+    syncStatus = "saving";
+    syncTimer = setTimeout(() => {
+      syncTimer = null;
+      persistSync(syncCountValue);
+    }, 600);
+  }
+
+  // used before exporting and before closing so a pending change cannot be lost
+  function flushSyncSave() {
+    if (!syncTimer) return;
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    return persistSync(syncCountValue);
+  }
+
+  async function persistSync(newCount: number | null) {
+    syncSaving = true;
+    syncStatus = "saving";
+    syncSaveError = "";
+    try {
+      await api.patch(`/api/v1/rankings/${rankingId}`, {
+        ranking: { spotify_sync_count: newCount },
+      });
+      onSyncUpdated(newCount);
+      syncStatus = "saved";
+    } catch (e) {
+      console.error("[export] saving auto-sync failed", e);
+      syncSaveError = describeError(e).message;
+      syncStatus = "failed";
+    } finally {
+      syncSaving = false;
+    }
+  }
+
+  function closeAfterFlush() {
+    flushSyncSave();
+    onClose();
+  }
 
   let preview = $derived(rankedSongs.slice(0, count));
   let hasExisting = $derived(!!spotifyPlaylistId);
 
   function decrementSync() {
-    if (syncCountValue > 1) syncCountValue--;
+    if (syncCountValue > 1) {
+      syncCountValue--;
+      queueSyncSave();
+    }
   }
   function incrementSync() {
-    if (syncCountValue < rankedSongs.length) syncCountValue++;
+    if (syncCountValue < rankedSongs.length) {
+      syncCountValue++;
+      queueSyncSave();
+    }
   }
   function parseCount(e: Event, max: number): number {
     const val = parseInt((e.target as HTMLInputElement).value);
@@ -62,23 +119,16 @@
 
   function onSyncCountInput(e: Event) {
     syncCountValue = parseCount(e, rankedSongs.length);
-  }
-
-  async function patchSync(newCount: number | null) {
-    syncSaving = true;
-    try {
-      await api.patch(`/api/v1/rankings/${rankingId}`, {
-        ranking: { spotify_sync_count: newCount },
-      });
-      onSyncUpdated(newCount);
-    } finally {
-      syncSaving = false;
-    }
+    queueSyncSave();
   }
 
   async function toggleSync() {
+    if (syncTimer) {
+      clearTimeout(syncTimer);
+      syncTimer = null;
+    }
     autoSync = !autoSync;
-    await patchSync(autoSync ? syncCountValue : null);
+    await persistSync(autoSync ? syncCountValue : null);
   }
 
   function decrement() {
@@ -94,6 +144,7 @@
 
   async function submit() {
     if (phase === "loading") return;
+    await flushSyncSave();
     phase = "loading";
     try {
       const exportResult = await api.post<{ status: string; playlist_url: string }>(
@@ -101,26 +152,35 @@
         { name: name.trim() || rankingName, count, public: isPublic },
       );
       playlistUrl = exportResult.playlist_url;
+      exportedName = name.trim() || rankingName;
+      exportedCount = count;
+      exportedPublic = isPublic;
       resultMsg =
         exportResult.status === "created" ? "playlist created" : "playlist updated";
       phase = "success";
       const id = exportResult.playlist_url.split("/").pop() ?? "";
       onExported(id, count);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("spotify_scope_required") || msg.includes("403")) {
+      console.error("[export] export failed", err);
+      // read the status rather than substring-matching the message
+      if (err instanceof ApiError && err.status === 403) {
         phase = "reauth";
-      } else {
-        resultMsg = msg || "export failed. try again.";
-        phase = "error";
+        return;
       }
+      resultMsg = describeError(err, { subject: "spotify" }).message;
+      phase = "error";
     }
   }
 </script>
 
-{#snippet stepper(value: number, onDecrement: () => void, onIncrement: () => void, oninput: (e: Event) => void, label: string)}
+{#snippet stepper(value: number, onDecrement: () => void, onIncrement: () => void, oninput: (e: Event) => void, label: string, what: string)}
   <div class="stepper">
-    <button class="step-btn" onclick={onDecrement} disabled={value <= 1}>
+    <button
+      class="step-btn"
+      onclick={onDecrement}
+      disabled={value <= 1}
+      aria-label="Decrease {what}"
+    >
       <IconMinus size={12} />
     </button>
     <input
@@ -128,6 +188,7 @@
       type="number"
       min={1}
       max={rankedSongs.length}
+      aria-label={what}
       {value}
       {oninput}
     />
@@ -135,6 +196,7 @@
       class="step-btn"
       onclick={onIncrement}
       disabled={value >= rankedSongs.length}
+      aria-label="Increase {what}"
     >
       <IconPlus size={12} />
     </button>
@@ -142,10 +204,16 @@
   </div>
 {/snippet}
 
-<Modal title="export to spotify" {onClose}>
+<Modal title="export to spotify" onClose={closeAfterFlush}>
   {#if phase === "success"}
     <div class="result-area">
       <p class="result-msg">{resultMsg}</p>
+      <!-- the user just made four choices; echo them back rather than only "done" -->
+      <p class="result-detail">
+        {exportedName} &middot; {exportedCount}
+        {exportedCount === 1 ? "song" : "songs"} &middot;
+        {exportedPublic ? "public" : "private"}
+      </p>
       <a
         class="open-link"
         href={playlistUrl}
@@ -156,8 +224,10 @@
       </a>
     </div>
     <footer>
-      <span></span>
-      <button class="submit-btn" onclick={onClose}>done</button>
+      <button class="submit-btn secondary" onclick={() => (phase = "idle")}
+        >back to settings</button
+      >
+      <button class="submit-btn" onclick={closeAfterFlush}>done</button>
     </footer>
   {:else if phase === "reauth"}
     <div class="result-area">
@@ -198,12 +268,13 @@
 
       <div class="field">
         <span class="label">songs to export</span>
-        {@render stepper(count, decrement, increment, onCountInput, `of ${rankedSongs.length}`)}
+        {@render stepper(count, decrement, increment, onCountInput, `of ${rankedSongs.length}`, "songs to export")}
+        <span class="field-hint">this export only</span>
       </div>
 
       <div class="field visibility-field">
-        <span class="label">visibility</span>
-        <div class="toggle-row">
+        <span class="label" id="visibility-label">visibility</span>
+        <div class="toggle-row" role="group" aria-labelledby="visibility-label">
           <button
             class="toggle-opt"
             class:active={!isPublic}
@@ -227,27 +298,30 @@
             disabled={syncSaving}
             role="switch"
             aria-checked={autoSync}
+            aria-label="Daily auto-sync"
           >
             <span class="switch-thumb"></span>
           </button>
         </div>
         {#if autoSync}
           <div class="sync-row">
-            {@render stepper(syncCountValue, decrementSync, incrementSync, onSyncCountInput, "top songs synced daily")}
-            <button
-              class="save-sync-btn"
-              onclick={() => patchSync(syncCountValue)}
-              disabled={syncSaving}
-            >
-              {syncSaving ? "saving…" : "save"}
-            </button>
+            {@render stepper(syncCountValue, decrementSync, incrementSync, onSyncCountInput, "top songs synced daily", "songs synced daily")}
+            <span class="sync-status" role="status" aria-live="polite">
+              {#if syncStatus === "saving"}saving…
+              {:else if syncStatus === "saved"}saved
+              {:else if syncStatus === "failed"}not saved
+              {/if}
+            </span>
           </div>
+          {#if syncSaveError}
+            <p class="sync-save-error" role="alert">{syncSaveError}</p>
+          {/if}
         {/if}
       </div>
     </div>
 
     <div class="preview-header">
-      <span class="label">preview ({count} songs)</span>
+      <span class="label">preview ({count} {count === 1 ? "song" : "songs"})</span>
     </div>
     <ul class="preview-list">
       {#each preview as song, i (song.id)}
@@ -374,7 +448,7 @@
   }
 
   .count-of {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
     color: var(--text-muted);
   }
@@ -415,6 +489,8 @@
     list-style: none;
     overflow-y: auto;
     flex: 1;
+    /* was ~105px, about three rows out of a hundred */
+    min-height: 170px;
     padding: 0 0 4px;
   }
 
@@ -510,6 +586,12 @@
     padding: 40px 20px;
   }
 
+  .result-detail {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+  }
   .result-msg {
     font-family: var(--font-serif);
     font-size: 18px;
@@ -548,11 +630,12 @@
     letter-spacing: 0.3px;
   }
 
+  /* 36x20 failed the 24px minimum tap target */
   .switch {
     position: relative;
-    width: 36px;
-    height: 20px;
-    border-radius: 10px;
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
     background: var(--text-muted);
     border: none;
     cursor: pointer;
@@ -569,14 +652,14 @@
     position: absolute;
     top: 3px;
     left: 3px;
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: white;
     transition: transform 0.2s;
   }
   .switch.on .switch-thumb {
-    transform: translateX(16px);
+    transform: translateX(20px);
   }
 
   .sync-error-banner {
@@ -600,6 +683,13 @@
     justify-content: space-between;
   }
 
+  .field-hint {
+    margin-top: 6px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
   .sync-row {
     display: flex;
     align-items: center;
@@ -608,20 +698,17 @@
     margin-top: 8px;
   }
 
-  .save-sync-btn {
+  .sync-status {
     font-family: var(--font-ui);
     font-size: 11px;
-    letter-spacing: 0.4px;
-    background: none;
-    border: var(--border);
-    border-radius: 4px;
-    padding: 5px 12px;
-    cursor: pointer;
-    color: var(--ink);
-    flex-shrink: 0;
+    color: var(--text-muted);
+    white-space: nowrap;
+    min-width: 52px;
   }
-  .save-sync-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+  .sync-save-error {
+    margin-top: 6px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    color: var(--danger);
   }
 </style>
