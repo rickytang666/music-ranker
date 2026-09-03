@@ -59,7 +59,7 @@
 			<button class="hamburger" onclick={() => drawerOpen = !drawerOpen}>
 				<IconMenu2 size={20} />
 			</button>
-			<span class="app-title">music ranker</span>
+			<a class="app-title" href="/">music ranker</a>
 		</div>
 		<div class="page-content">
 			{@render children()}
@@ -111,6 +111,8 @@
 	.app-title {
 		font-family: var(--font-serif);
 		font-size: 18px;
+		color: var(--ink);
+		text-decoration: none;
 	}
 	.drawer-overlay {
 		position: fixed;
