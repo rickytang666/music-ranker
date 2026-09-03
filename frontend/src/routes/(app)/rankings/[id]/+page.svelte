@@ -7,6 +7,7 @@
     IconShare,
     IconCheck,
     IconRotate,
+    IconDots,
     IconArrowLeft,
     IconArrowRight,
     IconCornerDownLeft,
@@ -22,6 +23,7 @@
   import RankedList from "$lib/components/RankedList.svelte";
   import AlbumList from "$lib/components/AlbumList.svelte";
   import ConfidenceSlider from "$lib/components/ConfidenceSlider.svelte";
+  import DangerConfirm from "$lib/components/DangerConfirm.svelte";
 
   interface Matchup {
     song_a: BaseSong;
@@ -205,29 +207,26 @@
     await Promise.all([loadNext(), loadSongs()]);
   }
 
+  let dangerMenuOpen = $state(false);
+  let resetConfirmOpen = $state(false);
+  let pendingRemoval = $state<RankedSong | null>(null);
+
+  // each matchup increments the count on both of its songs
+  let matchupTotal = $derived(
+    Math.round(rankedSongs.reduce((n, s) => n + s.matchup_count, 0) / 2),
+  );
+
   async function resetRanking() {
-    if (
-      !confirm("Reset all ELO scores and match history? This cannot be undone.")
-    )
-      return;
     shownPairs = [];
     await api.post(`/api/v1/rankings/${rankingId}/reset`, {});
     await Promise.all([loadNext(), loadSongs()]);
   }
 
+  // errors propagate so the confirmation dialog can stay open and report them
   async function removeSong(songId: number) {
-    const song = rankedSongs.find((s) => s.id === songId);
-    if (
-      !confirm(`Remove "${song?.title ?? "this song"}"? This cannot be undone.`)
-    )
-      return;
-    try {
-      await api.delete(`/api/v1/rankings/${rankingId}/songs/${songId}`);
-      rankedSongs = rankedSongs.filter((s) => s.id !== songId);
-      loadNext();
-    } catch {
-      // non-critical
-    }
+    await api.delete(`/api/v1/rankings/${rankingId}/songs/${songId}`);
+    rankedSongs = rankedSongs.filter((s) => s.id !== songId);
+    loadNext();
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -448,9 +447,32 @@
         >
           <IconUpload size={14} />
         </button>
-        <button class="icon-btn" onclick={resetRanking} title="Reset ranking">
-          <IconRotate size={14} />
-        </button>
+        <div class="danger-wrap">
+          <button
+            class="icon-btn danger-trigger"
+            onclick={() => (dangerMenuOpen = !dangerMenuOpen)}
+            title="More actions"
+          >
+            <IconDots size={14} />
+          </button>
+          {#if dangerMenuOpen}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div class="menu-scrim" onclick={() => (dangerMenuOpen = false)}></div>
+            <div class="danger-menu">
+              <button
+                class="danger-item"
+                onclick={() => {
+                  dangerMenuOpen = false;
+                  resetConfirmOpen = true;
+                }}
+              >
+                <IconRotate size={14} />
+                Reset ranking
+              </button>
+            </div>
+          {/if}
+        </div>
       {/if}
       <button
         class="icon-btn"
@@ -469,7 +491,7 @@
   {:else if panelView === "songs"}
     <RankedList
       songs={rankedSongs}
-      onRemove={removeSong}
+      onRemove={(id) => (pendingRemoval = rankedSongs.find((s) => s.id === id) ?? null)}
       onFlag={flag}
       {flaggingSong}
     />
@@ -477,6 +499,27 @@
     <AlbumList songs={rankedSongs} />
   {/if}
 </aside>
+
+{#if resetConfirmOpen && ranking}
+  <DangerConfirm
+    title="Reset this ranking?"
+    body={`This permanently erases ${matchupTotal.toLocaleString()} ${matchupTotal === 1 ? "matchup" : "matchups"} across ${rankedSongs.length} ${rankedSongs.length === 1 ? "song" : "songs"} and returns every score to its starting value. The songs stay, your comparisons do not. This cannot be undone.`}
+    confirmLabel="reset ranking"
+    confirmPhrase={ranking.name}
+    onConfirm={resetRanking}
+    onClose={() => (resetConfirmOpen = false)}
+  />
+{/if}
+
+{#if pendingRemoval}
+  <DangerConfirm
+    title="Remove this song?"
+    body={`"${pendingRemoval.title}" will be removed from this ranking along with its score and ${pendingRemoval.matchup_count} ${pendingRemoval.matchup_count === 1 ? "comparison" : "comparisons"}. You can add it back later, but its history will not return.`}
+    confirmLabel="remove song"
+    onConfirm={() => removeSong(pendingRemoval!.id)}
+    onClose={() => (pendingRemoval = null)}
+  />
+{/if}
 
 {#if importOpen && ranking}
   <SongImportModal
@@ -806,6 +849,52 @@
     position: fixed;
     inset: 0;
     z-index: 9;
+  }
+
+  /* reset lives behind its own trigger so it is never one misclick away from
+     add-songs or export, which sit in the same row */
+  .danger-wrap {
+    position: relative;
+    display: flex;
+  }
+  .menu-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+  }
+  .danger-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    background: var(--paper);
+    border: 1.5px solid var(--danger);
+    border-radius: 6px;
+    padding: 4px;
+    min-width: 170px;
+    box-shadow: 3px 3px 0 0 var(--danger-edge);
+    z-index: 10;
+  }
+  .danger-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: var(--font-serif);
+    font-size: 14px;
+    color: var(--danger);
+    cursor: pointer;
+  }
+  .danger-item:hover {
+    background: var(--danger-soft);
+  }
+  .danger-trigger:hover {
+    color: var(--danger);
+    border-color: var(--danger);
   }
 
   .export-menu {

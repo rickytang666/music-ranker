@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import DangerConfirm from "$lib/components/DangerConfirm.svelte";
   import {
     IconChevronLeft,
     IconChevronRight,
@@ -99,15 +100,13 @@
     goto("/login");
   }
 
+  let pendingDelete = $state<Ranking | null>(null);
+
+  // errors propagate so the confirmation dialog can stay open and report them
   async function deleteRanking(ranking: Ranking) {
-    if (!confirm(`Delete "${ranking.name}"? This cannot be undone.`)) return;
-    try {
-      await api.delete(`/api/v1/rankings/${ranking.id}`);
-      rankings.remove(ranking.id);
-      if (activeId === ranking.id) goto("/");
-    } catch {
-      // silently ignore
-    }
+    await api.delete(`/api/v1/rankings/${ranking.id}`);
+    rankings.remove(ranking.id);
+    if (activeId === ranking.id) goto("/");
   }
 </script>
 
@@ -191,7 +190,7 @@
             </button>
             <button
               class="tab-icon-btn danger"
-              onclick={() => deleteRanking(ranking)}
+              onclick={() => (pendingDelete = ranking)}
               title="Delete"
             >
               <IconTrash size={12} />
@@ -255,6 +254,17 @@
     {/if}
   </div>
 </aside>
+
+{#if pendingDelete}
+  <DangerConfirm
+    title="Delete this ranking?"
+    body={`"${pendingDelete.name}" and everything in it will be permanently deleted, including every song in the list and every comparison you have made. This cannot be undone.`}
+    confirmLabel="delete ranking"
+    confirmPhrase={pendingDelete.name}
+    onConfirm={() => deleteRanking(pendingDelete!)}
+    onClose={() => (pendingDelete = null)}
+  />
+{/if}
 
 <style>
   .sidebar {
