@@ -6,17 +6,19 @@
 </div>
 
 <style>
+  /* fixed desktop padding left only 148px of content at 375px, which forced the
+     heading to four lines; clamp keeps the desktop look and scales it down */
   .center {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 48px;
+    padding: clamp(16px, 5vw, 48px);
   }
   .empty {
     border: 1.5px dashed var(--ink);
     border-radius: 8px;
-    padding: 56px 64px;
+    padding: clamp(28px, 7vw, 56px) clamp(20px, 6vw, 64px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -26,7 +28,7 @@
   }
   .heading {
     font-family: var(--font-serif);
-    font-size: 32px;
+    font-size: clamp(24px, 7vw, 32px);
     line-height: 1.2;
   }
   .hint {
