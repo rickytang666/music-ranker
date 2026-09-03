@@ -20,6 +20,34 @@ function sessionExpired<T>(): Promise<T> {
 	return new Promise<T>(() => {});
 }
 
+export interface ErrorInfo {
+	message: string;
+	retryable: boolean;
+}
+
+// 401 needs no branch here: request() intercepts it and redirects before any catch runs
+export function describeError(e: unknown): ErrorInfo {
+	// anything that is not an ApiError means fetch itself failed, so the request
+	// never reached the server: this is the only genuine connectivity case
+	if (!(e instanceof ApiError)) {
+		return { message: 'could not reach the server. check your connection.', retryable: true };
+	}
+	const fromServer = typeof e.body.error === 'string' ? e.body.error : null;
+	if (e.status === 429) {
+		return { message: fromServer ?? 'spotify is rate limiting us. wait a moment, then retry.', retryable: true };
+	}
+	if (e.status === 403) {
+		return { message: 'spotify denied this request. you may need to reconnect your account.', retryable: false };
+	}
+	if (e.status === 404) {
+		return { message: 'spotify has nothing for that.', retryable: false };
+	}
+	if (e.status >= 500) {
+		return { message: 'spotify is temporarily unavailable. try again in a moment.', retryable: true };
+	}
+	return { message: fromServer ?? 'that request failed.', retryable: true };
+}
+
 function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
 	const headers: Record<string, string> = { ...extra };
 	if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`;

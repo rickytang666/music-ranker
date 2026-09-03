@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { IconSearch, IconLoader2 } from '@tabler/icons-svelte';
-	import { api } from '$lib/api';
+	import { api, describeError } from '$lib/api';
 	import type { BaseSong } from '$lib/types';
 	import ImportItem from './ImportItem.svelte';
 	import Modal from './Modal.svelte';
@@ -38,6 +38,18 @@
 	let phase = $state<Phase>('idle');
 	let query = $state('');
 	let errorMsg = $state('');
+	let errorRetryable = $state(false);
+	let retryAction: (() => void) | null = null;
+
+	// one place to turn a thrown value into a message, a console record and a retry
+	function fail(op: string, e: unknown, retry: (() => void) | null = null) {
+		console.error(`[song import] ${op} failed`, e);
+		const info = describeError(e);
+		errorMsg = info.message;
+		errorRetryable = info.retryable && retry !== null;
+		retryAction = retry;
+		phase = 'error';
+	}
 	let loadingMsg = $state('loading…');
 	let saving = $state(false);
 
@@ -96,9 +108,8 @@
 				artistResults = r;
 				phase = r.length ? 'results' : 'no-results';
 			}
-		} catch {
-			errorMsg = 'search failed. check your connection.';
-			phase = 'error';
+		} catch (e) {
+			fail('search', e, () => doSearch(q));
 		}
 	}
 
@@ -137,9 +148,8 @@
 			albumResults = await api.get<AlbumResult[]>(`/api/v1/spotify/artists/${artistId}/albums`);
 			selectedItems = new Set(albumResults.map((a) => a.id));
 			phase = albumResults.length ? 'discography' : 'no-results';
-		} catch {
-			errorMsg = 'failed to load discography. try again.';
-			phase = 'error';
+		} catch (e) {
+			fail('load discography', e, () => loadDiscography(artistId));
 		}
 	}
 
@@ -165,9 +175,8 @@
 			});
 			selectedTracks = new Set(tracks.map((t) => t.id));
 			phase = 'tracks';
-		} catch {
-			errorMsg = 'failed to load tracks. try again.';
-			phase = 'error';
+		} catch (e) {
+			fail('load tracks', e, () => loadTracks());
 		}
 	}
 
@@ -191,9 +200,9 @@
 			await api.post(`/api/v1/rankings/${rankingId}/songs`, { song_ids: ids });
 			onAdded();
 			onClose();
-		} catch {
-			errorMsg = 'failed to add songs. try again.';
+		} catch (e) {
 			saving = false;
+			fail('add songs', e, () => addSongs());
 		}
 	}
 
@@ -330,6 +339,9 @@
 
 			{:else if phase === 'error'}
 				<p class="hint error">{errorMsg}</p>
+				{#if errorRetryable}
+					<button class="retry" onclick={() => retryAction?.()}>retry</button>
+				{/if}
 			{/if}
 		</div>
 
@@ -406,6 +418,18 @@
 		letter-spacing: 0.3px;
 	}
 	.hint.error { color: var(--accent); }
+	.retry {
+		margin-top: 10px;
+		font-family: var(--font-ui);
+		font-size: 12px;
+		color: var(--ink);
+		background: none;
+		border: 1px solid var(--ink);
+		border-radius: 6px;
+		padding: 6px 14px;
+		cursor: pointer;
+	}
+	.retry:hover { background: var(--surface-hover); }
 
 	.spinner-row {
 		display: flex;
