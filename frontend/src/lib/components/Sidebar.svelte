@@ -338,6 +338,8 @@
     overflow-y: auto;
   }
 
+  /* icon colours are declared once below and resolved per context here, so the
+     light and dark states cannot drift apart */
   .tab-row {
     display: flex;
     align-items: center;
@@ -346,30 +348,26 @@
     padding: 0 6px 0 11px;
     min-height: 40px;
     gap: 4px;
+
+    --icon: var(--text-muted);
+    --icon-hover: var(--ink);
+    --icon-hover-bg: var(--surface-hover);
+    --icon-danger: var(--danger);
+    --icon-sync: var(--spotify);
   }
   .tab-row.active {
     background: var(--ink);
     color: var(--paper);
+
+    --icon: var(--on-dark-soft);
+    --icon-hover: var(--on-dark-strong);
+    --icon-hover-bg: var(--on-dark-hover);
+    --icon-danger: var(--danger-bright);
+    --icon-sync: var(--spotify-bright);
   }
   .tab-row.active .tab-link {
     color: var(--paper);
   }
-  .tab-row.active .tab-icon-btn {
-    color: var(--on-dark-soft);
-  }
-  .tab-row.active .tab-icon-btn:hover {
-    color: var(--on-dark-strong);
-    background: none;
-  }
-
-  /* the bright pair reads on the dark row; the default pair is tuned for paper */
-  .tab-row.active .tab-icon-btn.danger:hover {
-    color: var(--danger-bright);
-  }
-  .tab-row.active .sync-dot {
-    color: var(--spotify-bright);
-  }
-
   .tab-link {
     flex: 1;
     font-family: var(--font-serif);
@@ -402,26 +400,24 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: var(--line-strong);
+    color: var(--icon);
     flex-shrink: 0;
     padding: 0;
-    transition: color 0.1s;
+    transition: color 0.1s, background 0.1s;
   }
   .tab-icon-btn:hover {
-    color: var(--ink);
-    background: none;
+    color: var(--icon-hover);
+    background: var(--icon-hover-bg);
   }
   .tab-icon-btn.danger:hover {
-    color: var(--danger);
-    background: none;
+    color: var(--icon-danger);
   }
 
   .sync-dot {
     display: flex;
     align-items: center;
-    color: var(--spotify);
+    color: var(--icon-sync);
     flex-shrink: 0;
-    opacity: 0.8;
   }
   .sync-dot.error {
     color: var(--accent);
