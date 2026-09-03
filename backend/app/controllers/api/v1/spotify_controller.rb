@@ -2,6 +2,10 @@ module Api
   module V1
     class SpotifyController < BaseController
       rescue_from SpotifyClient::RateLimitError, with: :rate_limited
+      rescue_from SpotifyClient::ForbiddenError, with: :forbidden
+      rescue_from SpotifyClient::NotFoundError, with: :not_found
+      rescue_from SpotifyClient::ServiceUnavailableError, with: :unavailable
+
       def search_artists
         results = importer.search_artists(params.require(:q))
         render json: results
@@ -43,8 +47,21 @@ module Api
         @importer ||= SpotifyImporterService.new(current_user)
       end
 
+      # messages are already sanitised by SpotifyClient#error_detail, no raw body
       def rate_limited(err)
         render json: { error: err.message }, status: :too_many_requests
+      end
+
+      def forbidden(err)
+        render json: { error: err.message }, status: :forbidden
+      end
+
+      def not_found(err)
+        render json: { error: err.message }, status: :not_found
+      end
+
+      def unavailable(err)
+        render json: { error: err.message }, status: :service_unavailable
       end
     end
   end
