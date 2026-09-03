@@ -3,18 +3,29 @@
 	import { matchupStore, type FlagType } from '$lib/stores/signals.svelte';
 	import type { RankedSong } from '$lib/types';
 	import AlbumArt from './AlbumArt.svelte';
+	import { albumKey } from '$lib/albums';
 
 	let {
 		songs,
 		onRemove,
 		onFlag,
-		flaggingSong
+		flaggingSong,
+		albumFilter = null
 	}: {
 		songs: RankedSong[];
 		onRemove?: (id: number) => void;
 		onFlag?: (songId: number, type: FlagType) => void;
 		flaggingSong?: number | null;
+		albumFilter?: string | null;
 	} = $props();
+
+	// rank comes from the position in the full ranking, so filtering never
+	// renumbers the subset it shows
+	let rows = $derived(
+		songs
+			.map((song, i) => ({ song, rank: i + 1 }))
+			.filter(({ song }) => albumFilter === null || albumKey(song) === albumFilter)
+	);
 
 	function handleFlag(songId: number, type: FlagType) {
 		if (matchupStore.isFlagged(songId) || flaggingSong === songId) return;
@@ -23,9 +34,9 @@
 </script>
 
 <div class="list">
-	{#each songs as song, i (song.id)}
+	{#each rows as { song, rank } (song.id)}
 		<div class="row">
-			<span class="rank">{i + 1}</span>
+			<span class="rank">{rank}</span>
 
 			<AlbumArt src={song.album_art_url} alt={song.album_name ?? song.title} size={36} />
 

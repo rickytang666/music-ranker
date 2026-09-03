@@ -22,6 +22,7 @@
   import SpotifyExportModal from "$lib/components/SpotifyExportModal.svelte";
   import RankedList from "$lib/components/RankedList.svelte";
   import AlbumList from "$lib/components/AlbumList.svelte";
+  import { albumKey, albumLabel } from "$lib/albums";
   import ConfidenceSlider from "$lib/components/ConfidenceSlider.svelte";
   import DangerConfirm from "$lib/components/DangerConfirm.svelte";
 
@@ -54,6 +55,21 @@
   let copyFeedback = $state(false);
   let mobileTab = $state<"match" | "ranking">("match");
   let panelView = $state<"songs" | "albums">("songs");
+  let albumFilter = $state<string | null>(null);
+
+  // a filter from one ranking is meaningless in another
+  $effect(() => {
+    void rankingId;
+    untrack(() => (albumFilter = null));
+  });
+
+  let albumFilterLabel = $derived(
+    albumFilter === null
+      ? null
+      : (rankedSongs.find((s) => albumKey(s) === albumFilter)
+          ? albumLabel(rankedSongs.find((s) => albumKey(s) === albumFilter)!)
+          : null),
+  );
 
   async function fetchExportText(): Promise<string> {
     return api.getText(`/api/v1/rankings/${rankingId}/export`);
@@ -489,14 +505,33 @@
       <p>add songs to start ranking</p>
     </div>
   {:else if panelView === "songs"}
+    {#if albumFilterLabel}
+      <div class="filter-bar">
+        <span class="filter-chip">
+          {albumFilterLabel}
+          <button
+            class="filter-clear"
+            onclick={() => (albumFilter = null)}
+            aria-label="Clear album filter">clear</button
+          >
+        </span>
+      </div>
+    {/if}
     <RankedList
       songs={rankedSongs}
       onRemove={(id) => (pendingRemoval = rankedSongs.find((s) => s.id === id) ?? null)}
       onFlag={flag}
       {flaggingSong}
+      {albumFilter}
     />
   {:else}
-    <AlbumList songs={rankedSongs} />
+    <AlbumList
+      songs={rankedSongs}
+      onSelect={(key) => {
+        albumFilter = key;
+        panelView = "songs";
+      }}
+    />
   {/if}
 </aside>
 
@@ -925,6 +960,52 @@
   }
   .export-item:hover {
     background: var(--surface-hover);
+  }
+
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    flex-shrink: 0;
+  }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    min-width: 0;
+    padding: 4px 6px 4px 10px;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* padding sized so the tap target clears the 24px WCAG 2.5.8 minimum;
+     at 2px it measured 41x16 and failed on touch */
+  .filter-clear {
+    flex-shrink: 0;
+    border: none;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 999px;
+    padding: 0 10px;
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    font-family: var(--font-ui);
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+  }
+  .filter-clear:hover {
+    background: var(--danger);
   }
 
   .empty-list {
