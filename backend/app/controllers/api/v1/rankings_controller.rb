@@ -6,8 +6,23 @@ module Api
       RANKING_FIELDS = [:id, :name, :created_at, :spotify_playlist_id, :spotify_last_export_count, :spotify_sync_count, :spotify_sync_error].freeze
 
       def index
-        rankings = current_user.rankings.order(created_at: :desc)
-        render json: rankings.as_json(only: RANKING_FIELDS)
+        # counted in the query, not per record: one ranking already holds 181 songs
+        # and per-record counts would be N+1 in the number of rankings
+        rankings = current_user.rankings
+                               .left_joins(:ranking_songs)
+                               .left_joins(:matchups)
+                               .select(
+                                 "rankings.*",
+                                 "COUNT(DISTINCT ranking_songs.id) AS song_count",
+                                 "COUNT(DISTINCT matchups.id) AS matchup_count"
+                               )
+                               .group("rankings.id")
+                               .order(created_at: :desc)
+
+        render json: rankings.map { |r|
+          r.as_json(only: RANKING_FIELDS)
+           .merge("song_count" => r.song_count, "matchup_count" => r.matchup_count)
+        }
       end
 
       def create
