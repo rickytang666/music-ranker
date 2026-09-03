@@ -49,7 +49,7 @@
 	.overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(26, 26, 26, 0.4);
+		background: var(--scrim);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -88,9 +88,9 @@
 	}
 
 	.modal-subtitle {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.3px;
 	}
 
@@ -108,7 +108,7 @@
 	}
 
 	@media (max-width: 640px) {
-		.overlay { align-items: flex-end; background: rgba(26, 26, 26, 0.5); }
+		.overlay { align-items: flex-end; background: var(--scrim-heavy); }
 		.modal {
 			width: 100% !important;
 			max-width: 100%;

@@ -362,7 +362,7 @@
 
 	.mode-tab {
 		padding: 9px 20px;
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
 		letter-spacing: 0.8px;
 		text-transform: uppercase;
@@ -370,7 +370,7 @@
 		border-bottom: 2px solid transparent;
 		background: none;
 		cursor: pointer;
-		color: var(--muted);
+		color: var(--text-muted);
 		margin-bottom: -1px;
 	}
 	.mode-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
@@ -382,7 +382,7 @@
 		padding: 12px 20px;
 		border-bottom: var(--border);
 		flex-shrink: 0;
-		color: var(--muted);
+		color: var(--text-muted);
 	}
 
 	.search-row input {
@@ -398,9 +398,9 @@
 	.content { flex: 1; overflow-y: auto; padding: 12px 0; }
 
 	.hint {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 		text-align: center;
 		padding: 40px 20px;
 		letter-spacing: 0.3px;
@@ -413,9 +413,9 @@
 		justify-content: center;
 		gap: 10px;
 		padding: 40px 20px;
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 	}
 
 	:global(.spin) { animation: spin 1s linear infinite; }
@@ -434,9 +434,9 @@
 	.text-btn {
 		background: none;
 		border: none;
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 		cursor: pointer;
 		letter-spacing: 0.3px;
 		padding: 0;
@@ -453,9 +453,9 @@
 	}
 
 	.count {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.3px;
 	}
 

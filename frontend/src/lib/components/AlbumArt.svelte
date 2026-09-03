@@ -19,10 +19,10 @@
 		flex-shrink: 0;
 		display: block;
 	}
-	.art.square { border-radius: 3px; border: 1px solid rgba(26,26,26,0.12); }
-	.art.round  { border-radius: 50%; border: 1px solid rgba(26,26,26,0.12); }
+	.art.square { border-radius: 3px; border: 1px solid var(--surface-active); }
+	.art.round  { border-radius: 50%; border: 1px solid var(--surface-active); }
 	.art.placeholder {
-		background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(0,0,0,0.06) 5px 6px);
+		background: repeating-linear-gradient(135deg, transparent 0 5px, var(--shadow-soft) 5px 6px);
 		border: var(--border);
 	}
 </style>

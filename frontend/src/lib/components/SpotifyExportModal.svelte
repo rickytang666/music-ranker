@@ -308,11 +308,11 @@
   }
 
   .label {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 10px;
     letter-spacing: 0.8px;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--text-muted);
   }
 
   .field input[type="text"] {
@@ -376,7 +376,7 @@
   .count-of {
     font-family: var(--font-mono);
     font-size: 11px;
-    color: var(--muted);
+    color: var(--text-muted);
   }
 
   .toggle-row {
@@ -391,12 +391,12 @@
   .toggle-opt {
     background: none;
     border: none;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
     letter-spacing: 0.4px;
     padding: 6px 14px;
     cursor: pointer;
-    color: var(--muted);
+    color: var(--text-muted);
   }
   .toggle-opt.active {
     background: var(--ink);
@@ -425,13 +425,13 @@
     padding: 5px 20px;
   }
   .preview-row:hover {
-    background: rgba(0, 0, 0, 0.03);
+    background: var(--wash);
   }
 
   .preview-rank {
     font-family: var(--font-mono);
     font-size: 10px;
-    color: var(--muted);
+    color: var(--text-muted);
     width: 18px;
     text-align: right;
     flex-shrink: 0;
@@ -455,9 +455,9 @@
   }
 
   .preview-artist {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 10px;
-    color: var(--muted);
+    color: var(--text-muted);
     flex-shrink: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -475,8 +475,8 @@
   }
 
   .submit-btn {
-    background: #1db954;
-    color: #fff;
+    background: var(--spotify);
+    color: var(--paper);
     border: none;
     border-radius: 6px;
     padding: 9px 20px;
@@ -495,7 +495,7 @@
   }
 
   .error-msg {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
     color: var(--accent);
   }
@@ -523,9 +523,9 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
-    color: #1db954;
+    color: var(--spotify);
     text-decoration: none;
     letter-spacing: 0.3px;
   }
@@ -534,14 +534,14 @@
   }
 
   .reauth-hint {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
-    color: var(--muted);
+    color: var(--text-muted);
     text-align: center;
   }
 
   .reauth-link {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
     color: var(--ink);
     text-decoration: underline;
@@ -553,7 +553,7 @@
     width: 36px;
     height: 20px;
     border-radius: 10px;
-    background: var(--muted);
+    background: var(--text-muted);
     border: none;
     cursor: pointer;
     padding: 0;
@@ -562,7 +562,7 @@
     opacity: 0.5;
   }
   .switch.on {
-    background: #1db954;
+    background: var(--spotify);
     opacity: 1;
   }
   .switch-thumb {
@@ -580,11 +580,11 @@
   }
 
   .sync-error-banner {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
     color: var(--accent);
-    background: rgba(192, 57, 43, 0.06);
-    border-bottom: 1px solid rgba(192, 57, 43, 0.2);
+    background: var(--danger-softer);
+    border-bottom: 1px solid var(--danger-edge);
     padding: 10px 20px;
     letter-spacing: 0.2px;
   }
@@ -609,7 +609,7 @@
   }
 
   .save-sync-btn {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
     letter-spacing: 0.4px;
     background: none;

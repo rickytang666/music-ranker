@@ -36,11 +36,11 @@
 	}
 
 	.eyebrow {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 10px;
 		letter-spacing: 2px;
 		text-transform: uppercase;
-		color: var(--muted);
+		color: var(--text-muted);
 	}
 
 	.title {
@@ -52,9 +52,9 @@
 	}
 
 	.sub {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.3px;
 		margin-top: 4px;
 		margin-bottom: 12px;
@@ -69,7 +69,7 @@
 		color: var(--paper);
 		border-radius: 6px;
 		text-decoration: none;
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 12px;
 		letter-spacing: 0.5px;
 		transition: opacity 0.15s;

@@ -30,10 +30,10 @@
     line-height: 1.2;
   }
   .hint {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
     letter-spacing: 0.5px;
-    color: var(--muted);
+    color: var(--text-muted);
     text-transform: uppercase;
   }
 </style>

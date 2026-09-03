@@ -78,7 +78,7 @@
     align-items: center;
     gap: 10px;
     padding: 9px 18px;
-    border-bottom: 1px dashed var(--muted);
+    border-bottom: 1px dashed var(--text-muted);
     flex-shrink: 0;
   }
   .row:last-child {
@@ -91,7 +91,7 @@
     width: 22px;
     text-align: right;
     flex-shrink: 0;
-    color: var(--muted);
+    color: var(--text-muted);
   }
 
   .meta {
@@ -112,9 +112,9 @@
   }
 
   .artist {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 9.5px;
-    color: var(--muted);
+    color: var(--text-muted);
     letter-spacing: 0.4px;
     text-transform: uppercase;
     white-space: nowrap;
@@ -139,18 +139,18 @@
   }
 
   .stat-label {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 8px;
-    color: var(--muted);
+    color: var(--text-muted);
     letter-spacing: 1px;
     text-transform: uppercase;
     line-height: 1;
   }
 
   .song-count {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 8px;
-    color: var(--muted);
+    color: var(--text-muted);
     letter-spacing: 0.5px;
     line-height: 1;
     opacity: 0.6;

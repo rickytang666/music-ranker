@@ -305,11 +305,11 @@
   }
 
   .label {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 10px;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--text-muted);
   }
 
   .icon-btn {
@@ -355,11 +355,19 @@
     color: var(--paper);
   }
   .tab-row.active .tab-icon-btn {
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--on-dark-soft);
   }
   .tab-row.active .tab-icon-btn:hover {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--on-dark-strong);
     background: none;
+  }
+
+  /* the bright pair reads on the dark row; the default pair is tuned for paper */
+  .tab-row.active .tab-icon-btn.danger:hover {
+    color: var(--danger-bright);
+  }
+  .tab-row.active .sync-dot {
+    color: var(--spotify-bright);
   }
 
   .tab-link {
@@ -394,7 +402,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: rgba(26, 26, 26, 0.3);
+    color: var(--line-strong);
     flex-shrink: 0;
     padding: 0;
     transition: color 0.1s;
@@ -404,14 +412,14 @@
     background: none;
   }
   .tab-icon-btn.danger:hover {
-    color: #c0392b;
+    color: var(--danger);
     background: none;
   }
 
   .sync-dot {
     display: flex;
     align-items: center;
-    color: #1db954;
+    color: var(--spotify);
     flex-shrink: 0;
     opacity: 0.8;
   }
@@ -426,7 +434,7 @@
   .rename-input {
     flex: 1;
     border: none;
-    border-bottom: 1px solid var(--muted);
+    border-bottom: 1px solid var(--text-muted);
     background: none;
     font-family: var(--font-serif);
     font-size: 15px;
@@ -511,7 +519,7 @@
   }
   .new-ranking-form input {
     border: none;
-    border-bottom: 1px solid var(--muted);
+    border-bottom: 1px solid var(--text-muted);
     background: none;
     font-family: var(--font-serif);
     font-size: 15px;
@@ -538,15 +546,15 @@
     font-family: var(--font-serif);
     font-size: 14px;
     background: none;
-    color: var(--muted);
+    color: var(--text-muted);
     cursor: pointer;
     transition:
       color 0.1s,
       background 0.1s;
   }
   .logout-btn:hover {
-    color: #c0392b;
-    background: rgba(192, 57, 43, 0.06);
+    color: var(--danger);
+    background: var(--danger-softer);
   }
 
   .glyph-logout {
@@ -558,14 +566,14 @@
     width: 36px;
     height: 36px;
     background: none;
-    color: var(--muted);
+    color: var(--text-muted);
     cursor: pointer;
     transition:
       color 0.1s,
       background 0.1s;
   }
   .glyph-logout:hover {
-    color: #c0392b;
-    background: rgba(192, 57, 43, 0.06);
+    color: var(--danger);
+    background: var(--danger-softer);
   }
 </style>

@@ -108,7 +108,7 @@
 	.drawer-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(26, 26, 26, 0.4);
+		background: var(--scrim);
 		z-index: 199;
 	}
 	@media (max-width: 1199px) {
