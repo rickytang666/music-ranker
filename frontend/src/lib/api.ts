@@ -12,6 +12,14 @@ export class ApiError extends Error {
 	}
 }
 
+// a 401 means the session is gone, not that this call failed. clear it and leave
+// the promise unsettled: the root layout redirects the moment auth.token is null,
+// and an unsettled promise keeps callers out of catch so no error ui flashes first
+function sessionExpired<T>(): Promise<T> {
+	auth.expire();
+	return new Promise<T>(() => {});
+}
+
 function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
 	const headers: Record<string, string> = { ...extra };
 	if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`;
@@ -26,6 +34,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 	const res = await fetch(`${PUBLIC_API_BASE_URL}${path}`, { ...options, headers });
 
+	if (res.status === 401) return sessionExpired<T>();
+
 	if (!res.ok) {
 		const body = await res.json().catch(() => ({}));
 		throw new ApiError(res.status, body);
@@ -38,6 +48,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 async function getText(path: string): Promise<string> {
 	const headers = authHeaders({ Accept: 'text/plain' });
 	const res = await fetch(`${PUBLIC_API_BASE_URL}${path}`, { headers });
+	if (res.status === 401) return sessionExpired<string>();
 	if (!res.ok) {
 		const body = await res.json().catch(() => ({}));
 		throw new ApiError(res.status, body);
