@@ -22,8 +22,7 @@
 	let typed = $state('');
 	let phraseInput = $state<HTMLInputElement | null>(null);
 
-	// the autofocus attribute does not fire on a node mounted after load, so the
-	// dialog opened unfocused and typing went nowhere
+	// autofocus does not fire on a node mounted after load, so focus it here
 	$effect(() => {
 		phraseInput?.focus();
 	});
@@ -32,8 +31,7 @@
 	let busy = $state(false);
 	let failure = $state('');
 
-	// only close once the work actually succeeded, otherwise the dialog would
-	// vanish on failure and the action would look like it silently did nothing
+	// closes only on success, so a failure stays visible instead of looking like a no-op
 	async function confirm() {
 		if (!armed || busy) return;
 		busy = true;

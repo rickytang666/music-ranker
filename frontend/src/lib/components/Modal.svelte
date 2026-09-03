@@ -17,17 +17,16 @@
 
 	let modalEl = $state<HTMLElement | null>(null);
 
-	// focus used to stay on the trigger behind the dialog, which contradicted
-	// aria-modal and left keyboard users tabbing through the page to reach it
+	// aria-modal requires focus inside the dialog; restore it to the trigger on close
 	$effect(() => {
-		const previous = document.activeElement as HTMLElement | null;
-		const t = setTimeout(() => {
+		const trigger = document.activeElement as HTMLElement | null;
+		const focusTimer = setTimeout(() => {
 			// a child that manages its own focus, like a typed confirm, wins
 			if (modalEl && !modalEl.contains(document.activeElement)) modalEl.focus();
 		}, 0);
 		return () => {
-			clearTimeout(t);
-			previous?.focus?.();
+			clearTimeout(focusTimer);
+			trigger?.focus?.();
 		};
 	});
 
@@ -50,10 +49,10 @@
 			return;
 		}
 		if (e.key !== 'Tab') return;
-		const f = focusables();
-		if (f.length === 0) return;
-		const first = f[0];
-		const last = f[f.length - 1];
+		const focusable = focusables();
+		if (focusable.length === 0) return;
+		const first = focusable[0];
+		const last = focusable[focusable.length - 1];
 		if (e.shiftKey && document.activeElement === first) {
 			e.preventDefault();
 			last.focus();

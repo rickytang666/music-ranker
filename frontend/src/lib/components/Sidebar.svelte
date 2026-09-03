@@ -103,20 +103,18 @@
   let pendingDelete = $state<Ranking | null>(null);
 
   let accountName = $derived(auth.user?.display_name?.trim() || "your account");
-  // the avatar is captured at sign-in, so anyone who has not logged in since
-  // it shipped has none: initials are the normal case, not an error case
+  // the avatar is only captured at sign-in, so initials are the normal case, not a fallback for errors
   let initials = $derived(
     accountName
       .split(/\s+/)
       .slice(0, 2)
-      .map((w) => [...w][0] ?? "")
+      .map((word) => [...word][0] ?? "")
       .join("")
       .toUpperCase(),
   );
   let avatarFailed = $state(false);
 
-  // autofocus does not fire on nodes mounted after load, so both of these
-  // opened unfocused and swallowed the first keystrokes
+  // autofocus does not fire on nodes mounted after load, so both inputs focus via effects below
   let renameInput = $state<HTMLInputElement | null>(null);
   let newNameInput = $state<HTMLInputElement | null>(null);
 
@@ -380,8 +378,7 @@
     overflow-y: auto;
   }
 
-  /* icon colours are declared once below and resolved per context here, so the
-     light and dark states cannot drift apart */
+  /* icon colours live on the row so the active and inactive states cannot drift apart */
   .tab-row {
     display: flex;
     align-items: center;
@@ -605,8 +602,7 @@
     letter-spacing: 0.3px;
     color: var(--text-muted);
   }
-  /* min-width 0 on both the row and this child is what lets a long name
-     actually truncate instead of forcing the sidebar wider */
+  /* min-width 0 here and on .account is what lets a long name truncate instead of widening the sidebar */
   .account-name {
     flex: 1;
     min-width: 0;
@@ -629,9 +625,6 @@
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    transition:
-      color 0.1s,
-      background 0.1s;
     transition:
       color 0.1s,
       background 0.1s;

@@ -47,7 +47,7 @@ module Api
         @importer ||= SpotifyImporterService.new(current_user)
       end
 
-      # messages are already sanitised by SpotifyClient#error_detail, no raw body
+      # handlers below forward err.message verbatim: SpotifyClient never puts a raw response body in one
       def rate_limited(err)
         render json: { error: err.message }, status: :too_many_requests
       end

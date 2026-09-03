@@ -48,12 +48,12 @@
   let syncCountValue = $state(
     Math.min(syncCount ?? lastExportCount ?? DEFAULT_COUNT, rankedSongs.length),
   );
-  let syncSaving = $state(false);
-  // the sync setting used to need a separate save press, and skipping it
-  // discarded the change silently; it now persists on its own
+  let isSyncRequestInFlight = $state(false);
   let syncStatus = $state<"idle" | "saving" | "saved" | "failed">("idle");
   let syncSaveError = $state("");
   let syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const SYNC_SAVE_DEBOUNCE_MS = 600;
 
   function queueSyncSave() {
     if (!autoSync) return;
@@ -62,19 +62,19 @@
     syncTimer = setTimeout(() => {
       syncTimer = null;
       persistSync(syncCountValue);
-    }, 600);
+    }, SYNC_SAVE_DEBOUNCE_MS);
   }
 
-  // used before exporting and before closing so a pending change cannot be lost
-  function flushSyncSave() {
+  // called before exporting and before closing so a debounced change cannot be lost
+  async function flushSyncSave(): Promise<void> {
     if (!syncTimer) return;
     clearTimeout(syncTimer);
     syncTimer = null;
-    return persistSync(syncCountValue);
+    await persistSync(syncCountValue);
   }
 
   async function persistSync(newCount: number | null) {
-    syncSaving = true;
+    isSyncRequestInFlight = true;
     syncStatus = "saving";
     syncSaveError = "";
     try {
@@ -88,7 +88,7 @@
       syncSaveError = describeError(e).message;
       syncStatus = "failed";
     } finally {
-      syncSaving = false;
+      isSyncRequestInFlight = false;
     }
   }
 
@@ -162,7 +162,7 @@
       onExported(id, count);
     } catch (err: unknown) {
       console.error("[export] export failed", err);
-      // read the status rather than substring-matching the message
+      // 403 means the token lacks the playlist scope, so send the user back through consent
       if (err instanceof ApiError && err.status === 403) {
         phase = "reauth";
         return;
@@ -208,7 +208,6 @@
   {#if phase === "success"}
     <div class="result-area">
       <p class="result-msg">{resultMsg}</p>
-      <!-- the user just made four choices; echo them back rather than only "done" -->
       <p class="result-detail">
         {exportedName} &middot; {exportedCount}
         {exportedCount === 1 ? "song" : "songs"} &middot;
@@ -295,7 +294,7 @@
             class="switch"
             class:on={autoSync}
             onclick={toggleSync}
-            disabled={syncSaving}
+            disabled={isSyncRequestInFlight}
             role="switch"
             aria-checked={autoSync}
             aria-label="Daily auto-sync"
@@ -489,7 +488,7 @@
     list-style: none;
     overflow-y: auto;
     flex: 1;
-    /* was ~105px, about three rows out of a hundred */
+    /* keeps enough rows visible for the preview to read as a list */
     min-height: 170px;
     padding: 0 0 4px;
   }
@@ -630,7 +629,7 @@
     letter-spacing: 0.3px;
   }
 
-  /* 36x20 failed the 24px minimum tap target */
+  /* sized to the 24px minimum tap target */
   .switch {
     position: relative;
     width: 44px;

@@ -37,9 +37,9 @@ function expire() {
 }
 
 function consumeSessionExpired(): boolean {
-    const was = sessionExpired;
+    const wasExpired = sessionExpired;
     sessionExpired = false;
-    return was;
+    return wasExpired;
 }
 
 export const auth = {

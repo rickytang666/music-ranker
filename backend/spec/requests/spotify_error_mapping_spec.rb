@@ -1,7 +1,6 @@
 require "rails_helper"
 
-# these errors used to fall through as an indistinguishable 500, which left the
-# client unable to tell "no such artist" from "spotify is down"
+# these all used to surface as one indistinguishable 500, hiding "no such artist" behind "spotify is down"
 RSpec.describe "spotify error mapping", type: :request do
   let(:user) { create(:user) }
   let(:headers) { { "Authorization" => "Bearer #{JsonWebToken.encode(user_id: user.id)}" } }
@@ -11,10 +10,10 @@ RSpec.describe "spotify error mapping", type: :request do
     SpotifyClient::ForbiddenError => :forbidden,
     SpotifyClient::NotFoundError => :not_found,
     SpotifyClient::ServiceUnavailableError => :service_unavailable
-  }.each do |error, status|
-    it "maps #{error} to #{status}" do
+  }.each do |error_class, status|
+    it "maps #{error_class} to #{status}" do
       allow_any_instance_of(SpotifyImporterService)
-        .to receive(:search_artists).and_raise(error, "boom")
+        .to receive(:search_artists).and_raise(error_class, "boom")
 
       get "/api/v1/spotify/search/artists", params: { q: "anything" }, headers: headers
 

@@ -63,13 +63,11 @@
     untrack(() => (albumFilter = null));
   });
 
-  let albumFilterLabel = $derived(
-    albumFilter === null
-      ? null
-      : (rankedSongs.find((s) => albumKey(s) === albumFilter)
-          ? albumLabel(rankedSongs.find((s) => albumKey(s) === albumFilter)!)
-          : null),
-  );
+  let albumFilterLabel = $derived.by(() => {
+    if (albumFilter === null) return null;
+    const songInAlbum = rankedSongs.find((s) => albumKey(s) === albumFilter);
+    return songInAlbum ? albumLabel(songInAlbum) : null;
+  });
 
   async function fetchExportText(): Promise<string> {
     return api.getText(`/api/v1/rankings/${rankingId}/export`);
@@ -886,8 +884,7 @@
     z-index: 9;
   }
 
-  /* reset lives behind its own trigger so it is never one misclick away from
-     add-songs or export, which sit in the same row */
+  /* reset sits behind its own trigger so it is never one misclick from add-songs or export */
   .danger-wrap {
     position: relative;
     display: flex;
@@ -986,8 +983,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  /* padding sized so the tap target clears the 24px WCAG 2.5.8 minimum;
-     at 2px it measured 41x16 and failed on touch */
+  /* padding sized so the tap target clears the 24px WCAG 2.5.8 minimum */
   .filter-clear {
     flex-shrink: 0;
     border: none;

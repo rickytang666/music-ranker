@@ -12,9 +12,7 @@ export class ApiError extends Error {
 	}
 }
 
-// a 401 means the session is gone, not that this call failed. clear it and leave
-// the promise unsettled: the root layout redirects the moment auth.token is null,
-// and an unsettled promise keeps callers out of catch so no error ui flashes first
+// never settles: the layout redirects once auth.token is null, so no caller's catch flashes error ui
 function sessionExpired<T>(): Promise<T> {
 	auth.expire();
 	return new Promise<T>(() => {});
@@ -25,15 +23,13 @@ export interface ErrorInfo {
 	retryable: boolean;
 }
 
-// 401 needs no branch here: request() intercepts it and redirects before any catch runs
+// no 401 branch: request() intercepts it and redirects before any catch runs
 export function describeError(
 	e: unknown,
-	// subject names whoever refused; forbiddenHint carries advice only some callers can give
 	opts: { subject?: string; forbiddenHint?: string } = {}
 ): ErrorInfo {
 	const subject = opts.subject ?? 'the server';
-	// anything that is not an ApiError means fetch itself failed, so the request
-	// never reached the server: this is the only genuine connectivity case
+	// a non-ApiError means fetch itself failed, so the request never reached the server
 	if (!(e instanceof ApiError)) {
 		return { message: 'could not reach the server. check your connection.', retryable: true };
 	}

@@ -44,12 +44,12 @@
 	// one place to turn a thrown value into a message, a console record and a retry
 	function fail(op: string, e: unknown, retry: (() => void) | null = null) {
 		console.error(`[song import] ${op} failed`, e);
-		const info = describeError(e, {
+		const described = describeError(e, {
 			subject: 'spotify',
 			forbiddenHint: 'you may need to reconnect your account.'
 		});
-		errorMsg = info.message;
-		errorRetryable = info.retryable && retry !== null;
+		errorMsg = described.message;
+		errorRetryable = described.retryable && retry !== null;
 		retryAction = retry;
 		phase = 'error';
 	}
@@ -67,8 +67,7 @@
 	let searchTimer: ReturnType<typeof setTimeout>;
 	let searchInput = $state<HTMLInputElement | null>(null);
 
-	// the autofocus attribute does not fire on a node mounted after load, so the
-	// modal opened unfocused and the first keystrokes went nowhere
+	// autofocus does not fire on a node mounted after load, so focus it here
 	$effect(() => {
 		searchInput?.focus();
 	});

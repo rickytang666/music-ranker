@@ -1,8 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { api } from "$lib/api";
+  import { api, describeError } from "$lib/api";
   import { rankings, type Ranking } from "$lib/stores/rankings.svelte";
-  import { describeError } from "$lib/api";
   import { IconPlus, IconMusic } from "@tabler/icons-svelte";
 
   let creating = $state(false);
@@ -15,12 +14,13 @@
     if (creating) nameInput?.focus();
   });
 
-  // EloService leaves a song provisional under 10 matchups, and each matchup
-  // covers two songs, so a settled ranking needs roughly songs * 5
-  function progress(r: Ranking): number {
-    const target = r.song_count * 5;
+  // EloService leaves a song provisional under 10 matchups, and each matchup covers two songs
+  const MATCHUPS_PER_SONG_TO_SETTLE = 5;
+
+  function percentRanked(ranking: Ranking): number {
+    const target = ranking.song_count * MATCHUPS_PER_SONG_TO_SETTLE;
     if (target === 0) return 0;
-    return Math.min(100, Math.round((r.matchup_count / target) * 100));
+    return Math.min(100, Math.round((ranking.matchup_count / target) * 100));
   }
 
   async function createRanking() {
@@ -76,9 +76,9 @@
               {ranking.matchup_count === 1 ? "matchup" : "matchups"}
             </span>
             <span class="bar" aria-hidden="true">
-              <span class="fill" style="width: {progress(ranking)}%"></span>
+              <span class="fill" style="width: {percentRanked(ranking)}%"></span>
             </span>
-            <span class="card-progress">{progress(ranking)}% ranked</span>
+            <span class="card-progress">{percentRanked(ranking)}% ranked</span>
           </a>
         {/each}
       </div>

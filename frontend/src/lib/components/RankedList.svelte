@@ -19,8 +19,7 @@
 		albumFilter?: string | null;
 	} = $props();
 
-	// rank comes from the position in the full ranking, so filtering never
-	// renumbers the subset it shows
+	// rank is taken before filtering so a filtered subset keeps its full-ranking numbers
 	let rows = $derived(
 		songs
 			.map((song, i) => ({ song, rank: i + 1 }))
