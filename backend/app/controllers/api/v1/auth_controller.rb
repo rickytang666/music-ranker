@@ -5,7 +5,8 @@ module Api
         render json: {
           id: current_user.id,
           spotify_id: current_user.spotify_id,
-          display_name: current_user.display_name
+          display_name: current_user.display_name,
+          image_url: current_user.image_url
         }
       end
 
