@@ -115,6 +115,18 @@
   );
   let avatarFailed = $state(false);
 
+  // autofocus does not fire on nodes mounted after load, so both of these
+  // opened unfocused and swallowed the first keystrokes
+  let renameInput = $state<HTMLInputElement | null>(null);
+  let newNameInput = $state<HTMLInputElement | null>(null);
+
+  $effect(() => {
+    renameInput?.focus();
+  });
+  $effect(() => {
+    newNameInput?.focus();
+  });
+
   // errors propagate so the confirmation dialog can stay open and report them
   async function deleteRanking(ranking: Ranking) {
     await api.delete(`/api/v1/rankings/${ranking.id}`);
@@ -158,9 +170,8 @@
         </a>
       {:else if renamingId === ranking.id}
         <div class="tab-row rename-row">
-          <!-- svelte-ignore a11y_autofocus -->
           <input
-            autofocus
+            bind:this={renameInput}
             class="rename-input"
             bind:value={renameValue}
             onkeydown={(e) => {
@@ -231,9 +242,8 @@
       </button>
     {:else if creating}
       <div class="new-ranking-form">
-        <!-- svelte-ignore a11y_autofocus -->
         <input
-          autofocus
+          bind:this={newNameInput}
           bind:value={newName}
           placeholder="Ranking name"
           onkeydown={(e) => {

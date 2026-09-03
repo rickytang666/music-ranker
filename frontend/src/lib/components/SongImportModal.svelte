@@ -65,6 +65,13 @@
 	let selectedTracks = $state(new Set<number>());
 
 	let searchTimer: ReturnType<typeof setTimeout>;
+	let searchInput = $state<HTMLInputElement | null>(null);
+
+	// the autofocus attribute does not fire on a node mounted after load, so the
+	// modal opened unfocused and the first keystrokes went nowhere
+	$effect(() => {
+		searchInput?.focus();
+	});
 
 	const placeholders: Record<Mode, string> = {
 		song: 'Search for a song…',
@@ -230,13 +237,12 @@
 
 		<div class="search-row">
 			<IconSearch size={16} class="search-icon" />
-			<!-- svelte-ignore a11y_autofocus -->
 			<input
 				type="search"
 				placeholder={placeholders[mode]}
+				bind:this={searchInput}
 				bind:value={query}
 				oninput={onInput}
-				autofocus
 			/>
 		</div>
 
