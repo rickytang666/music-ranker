@@ -6,6 +6,8 @@ export interface Ranking {
 	spotify_last_export_count: number | null;
 	spotify_sync_count: number | null;
 	spotify_sync_error: boolean;
+	song_count: number;
+	matchup_count: number;
 }
 
 let list = $state<Ranking[]>([]);
