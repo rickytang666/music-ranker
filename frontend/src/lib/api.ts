@@ -26,7 +26,12 @@ export interface ErrorInfo {
 }
 
 // 401 needs no branch here: request() intercepts it and redirects before any catch runs
-export function describeError(e: unknown): ErrorInfo {
+export function describeError(
+	e: unknown,
+	// subject names whoever refused; forbiddenHint carries advice only some callers can give
+	opts: { subject?: string; forbiddenHint?: string } = {}
+): ErrorInfo {
+	const subject = opts.subject ?? 'the server';
 	// anything that is not an ApiError means fetch itself failed, so the request
 	// never reached the server: this is the only genuine connectivity case
 	if (!(e instanceof ApiError)) {
@@ -34,16 +39,17 @@ export function describeError(e: unknown): ErrorInfo {
 	}
 	const fromServer = typeof e.body.error === 'string' ? e.body.error : null;
 	if (e.status === 429) {
-		return { message: fromServer ?? 'spotify is rate limiting us. wait a moment, then retry.', retryable: true };
+		return { message: fromServer ?? `${subject} is rate limiting us. wait a moment, then retry.`, retryable: true };
 	}
 	if (e.status === 403) {
-		return { message: 'spotify denied this request. you may need to reconnect your account.', retryable: false };
+		const hint = opts.forbiddenHint ? ` ${opts.forbiddenHint}` : '';
+		return { message: `${subject} refused this request.${hint}`, retryable: false };
 	}
 	if (e.status === 404) {
-		return { message: 'spotify has nothing for that.', retryable: false };
+		return { message: `${subject} has nothing matching that.`, retryable: false };
 	}
 	if (e.status >= 500) {
-		return { message: 'spotify is temporarily unavailable. try again in a moment.', retryable: true };
+		return { message: `${subject} is temporarily unavailable. try again in a moment.`, retryable: true };
 	}
 	return { message: fromServer ?? 'that request failed.', retryable: true };
 }

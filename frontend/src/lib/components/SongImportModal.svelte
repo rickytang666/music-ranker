@@ -44,7 +44,10 @@
 	// one place to turn a thrown value into a message, a console record and a retry
 	function fail(op: string, e: unknown, retry: (() => void) | null = null) {
 		console.error(`[song import] ${op} failed`, e);
-		const info = describeError(e);
+		const info = describeError(e, {
+			subject: 'spotify',
+			forbiddenHint: 'you may need to reconnect your account.'
+		});
 		errorMsg = info.message;
 		errorRetryable = info.retryable && retry !== null;
 		retryAction = retry;
