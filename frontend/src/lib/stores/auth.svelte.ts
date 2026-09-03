@@ -1,7 +1,7 @@
 interface User {
-    spotify_id: string;
-    display_name: string | null;
-    image_url: string | null;
+	spotify_id: string;
+	display_name: string | null;
+	image_url: string | null;
 }
 
 let token = $state<string | null>(null);
@@ -10,45 +10,45 @@ let user = $state<User | null>(null);
 let sessionExpired = $state(false);
 
 function init() {
-    if (typeof localStorage !== 'undefined') {
-        token = localStorage.getItem('token');
-    }
+	if (typeof localStorage !== 'undefined') {
+		token = localStorage.getItem('token');
+	}
 }
 
 function setToken(t: string) {
-    token = t;
-    localStorage.setItem('token', t);
-    sessionExpired = false;
+	token = t;
+	localStorage.setItem('token', t);
+	sessionExpired = false;
 }
 
 function setUser(u: User) {
-    user = u;
+	user = u;
 }
 
 function clear() {
-    token = null;
-    user = null;
-    localStorage.removeItem('token');
+	token = null;
+	user = null;
+	localStorage.removeItem('token');
 }
 
 function expire() {
-    clear();
-    sessionExpired = true;
+	clear();
+	sessionExpired = true;
 }
 
 function consumeSessionExpired(): boolean {
-    const wasExpired = sessionExpired;
-    sessionExpired = false;
-    return wasExpired;
+	const wasExpired = sessionExpired;
+	sessionExpired = false;
+	return wasExpired;
 }
 
 export const auth = {
-    get token() { return token; },
-    get user() { return user; },
-    init,
-    setToken,
-    setUser,
-    clear,
-    expire,
-    consumeSessionExpired
+	get token() { return token; },
+	get user() { return user; },
+	init,
+	setToken,
+	setUser,
+	clear,
+	expire,
+	consumeSessionExpired
 };
