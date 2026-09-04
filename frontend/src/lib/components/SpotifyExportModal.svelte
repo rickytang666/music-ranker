@@ -97,6 +97,11 @@
     onClose();
   }
 
+  // a queued save would otherwise fire after unmount and write to a dead component
+  $effect(() => () => {
+    if (syncTimer) clearTimeout(syncTimer);
+  });
+
   let preview = $derived(rankedSongs.slice(0, count));
   let hasExisting = $derived(!!spotifyPlaylistId);
 
@@ -244,7 +249,7 @@
     </div>
     <footer>
       <span></span>
-      <button class="submit-btn secondary" onclick={onClose}>cancel</button>
+      <button class="submit-btn secondary" onclick={closeAfterFlush}>cancel</button>
     </footer>
   {:else}
     {#if syncError}
