@@ -17,10 +17,14 @@
   // EloService leaves a song provisional under 10 matchups, and each matchup covers two songs
   const MATCHUPS_PER_SONG_TO_SETTLE = 5;
 
+  // counts can be absent for one render: the cached list in localStorage predates
+  // the api exposing them
   function percentRanked(ranking: Ranking): number {
-    const target = ranking.song_count * MATCHUPS_PER_SONG_TO_SETTLE;
+    const songs = ranking.song_count ?? 0;
+    const matchups = ranking.matchup_count ?? 0;
+    const target = songs * MATCHUPS_PER_SONG_TO_SETTLE;
     if (target === 0) return 0;
-    return Math.min(100, Math.round((ranking.matchup_count / target) * 100));
+    return Math.min(100, Math.round((matchups / target) * 100));
   }
 
   async function createRanking() {

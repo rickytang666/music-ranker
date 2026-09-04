@@ -20,8 +20,10 @@ function add(ranking: Ranking) {
 	list = [...list, ranking];
 }
 
-function update(ranking: Ranking) {
-	list = list.map((r) => (r.id === ranking.id ? ranking : r));
+// merged, not replaced: a partial payload would otherwise strip fields the
+// caller did not send, such as the counts the home cards read
+function update(ranking: Partial<Ranking> & { id: number }) {
+	list = list.map((r) => (r.id === ranking.id ? { ...r, ...ranking } : r));
 }
 
 function remove(id: number) {
