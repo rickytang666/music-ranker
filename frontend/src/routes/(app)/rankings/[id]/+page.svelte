@@ -11,7 +11,6 @@
     IconArrowLeft,
     IconArrowRight,
     IconCornerDownLeft,
-    IconUpload,
   } from "@tabler/icons-svelte";
   import { api, ApiError } from "$lib/api";
   import { rankings } from "$lib/stores/rankings.svelte";
@@ -19,6 +18,7 @@
   import type { BaseSong, RankedSong } from "$lib/types";
   import SongCard from "$lib/components/SongCard.svelte";
   import SongImportModal from "$lib/components/SongImportModal.svelte";
+  import SpotifyLogo from "$lib/components/SpotifyLogo.svelte";
   import SpotifyExportModal from "$lib/components/SpotifyExportModal.svelte";
   import RankedList from "$lib/components/RankedList.svelte";
   import AlbumList from "$lib/components/AlbumList.svelte";
@@ -436,7 +436,7 @@
         >
       </div>
       {#if rankedSongs.length > 0}
-        <span class="song-count">{rankedSongs.length} songs · sorted</span>
+        <span class="song-count">{rankedSongs.length} {rankedSongs.length === 1 ? "song" : "songs"}</span>
       {/if}
     </div>
     <div class="panel-actions">
@@ -476,7 +476,7 @@
           onclick={() => (spotifyExportOpen = true)}
           title="Export to Spotify"
         >
-          <IconUpload size={14} />
+          <SpotifyLogo size={14} />
         </button>
         <div class="danger-wrap">
           <button
@@ -859,6 +859,7 @@
   .song-count {
     font-family: var(--font-ui);
     font-size: 10px;
+    white-space: nowrap;
     color: var(--text-muted);
     letter-spacing: 0.5px;
     text-transform: uppercase;
