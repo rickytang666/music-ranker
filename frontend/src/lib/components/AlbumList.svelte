@@ -113,6 +113,10 @@
     font: inherit;
     color: inherit;
     cursor: pointer;
+    /* a button carries a default 2px outset bevel on every side; only the
+       dashed bottom from .row should survive */
+    border: none;
+    border-bottom: 1px dashed var(--text-muted);
   }
   .row.selectable:hover {
     background: var(--surface-hover);
