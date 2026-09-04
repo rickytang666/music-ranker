@@ -4,6 +4,7 @@
   import { api, ApiError, describeError } from "$lib/api";
   import type { RankedSong } from "$lib/types";
   import Modal from "./Modal.svelte";
+  import SpotifyLogo from "./SpotifyLogo.svelte";
 
   let {
     rankingId,
@@ -259,6 +260,7 @@
       </div>
     {/if}
 
+    <div class="body">
     <div class="form">
       <label class="field">
         <span class="label">playlist name</span>
@@ -345,6 +347,7 @@
         </li>
       {/each}
     </ul>
+    </div>
 
     <footer>
       {#if phase === "error"}
@@ -353,14 +356,15 @@
         <span></span>
       {/if}
       <button
-        class="submit-btn"
+        class="submit-btn brand"
         onclick={submit}
         disabled={phase === "loading"}
       >
+        <SpotifyLogo size={16} />
         {#if phase === "loading"}
           exporting…
         {:else if hasExisting}
-          update spotify playlist
+          update playlist
         {:else}
           export to spotify
         {/if}
@@ -370,6 +374,16 @@
 </Modal>
 
 <style>
+  /* the single scrollable region: form and preview share it so the footer stays
+     pinned no matter how short the viewport is */
+  .body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
   .form {
     padding: 16px 20px;
     display: flex;
@@ -491,10 +505,7 @@
 
   .preview-list {
     list-style: none;
-    overflow-y: auto;
-    flex: 1;
-    /* keeps enough rows visible for the preview to read as a list */
-    min-height: 170px;
+    flex-shrink: 0;
     padding: 0 0 4px;
   }
 
@@ -552,6 +563,19 @@
     padding: 14px 20px;
     border-top: var(--border);
     flex-shrink: 0;
+  }
+
+  /* brand green with dark text is spotify's own spec, and the only combination
+     that passes: white on brand green measures 2.59:1 */
+  .submit-btn.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--spotify-bright);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
   }
 
   .submit-btn {
