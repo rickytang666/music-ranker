@@ -63,11 +63,17 @@
     untrack(() => (albumFilter = null));
   });
 
+  // never gate the chip on a match: removing the last song of a filtered album
+  // would hide the clear button and strand the panel with no way out
   let albumFilterLabel = $derived.by(() => {
     if (albumFilter === null) return null;
     const songInAlbum = rankedSongs.find((s) => albumKey(s) === albumFilter);
-    return songInAlbum ? albumLabel(songInAlbum) : null;
+    return songInAlbum ? albumLabel(songInAlbum) : "this album";
   });
+
+  let filterMatchesNothing = $derived(
+    albumFilter !== null && !rankedSongs.some((s) => albumKey(s) === albumFilter),
+  );
 
   async function fetchExportText(): Promise<string> {
     return api.getText(`/api/v1/rankings/${rankingId}/export`);
@@ -243,13 +249,24 @@
     loadNext();
   }
 
+  // every overlay must be listed: window.confirm used to block these keystrokes,
+  // in-page dialogs do not, and a stray Enter would record a real matchup behind them
+  let overlayOpen = $derived(
+    importOpen ||
+      exportOpen ||
+      spotifyExportOpen ||
+      dangerMenuOpen ||
+      resetConfirmOpen ||
+      pendingRemoval !== null,
+  );
+
   function onKeydown(e: KeyboardEvent) {
+    if (overlayOpen) return;
     if ((e.metaKey || e.ctrlKey) && e.key === "k") {
       e.preventDefault();
       importOpen = true;
       return;
     }
-    if (importOpen || exportOpen) return;
     const tag = document.activeElement?.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA") return;
     if (!matchup || matchupPhase !== "ready") return;
@@ -513,6 +530,11 @@
             aria-label="Clear album filter">clear</button
           >
         </span>
+      </div>
+    {/if}
+    {#if filterMatchesNothing}
+      <div class="empty-list">
+        <p>no songs left in this album</p>
       </div>
     {/if}
     <RankedList
