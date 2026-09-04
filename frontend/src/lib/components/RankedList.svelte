@@ -3,18 +3,28 @@
 	import { matchupStore, type FlagType } from '$lib/stores/signals.svelte';
 	import type { RankedSong } from '$lib/types';
 	import AlbumArt from './AlbumArt.svelte';
+	import { albumKey } from '$lib/albums';
 
 	let {
 		songs,
 		onRemove,
 		onFlag,
-		flaggingSong
+		flaggingSong,
+		albumFilter = null
 	}: {
 		songs: RankedSong[];
 		onRemove?: (id: number) => void;
 		onFlag?: (songId: number, type: FlagType) => void;
 		flaggingSong?: number | null;
+		albumFilter?: string | null;
 	} = $props();
+
+	// rank is taken before filtering so a filtered subset keeps its full-ranking numbers
+	let rows = $derived(
+		songs
+			.map((song, i) => ({ song, rank: i + 1 }))
+			.filter(({ song }) => albumFilter === null || albumKey(song) === albumFilter)
+	);
 
 	function handleFlag(songId: number, type: FlagType) {
 		if (matchupStore.isFlagged(songId) || flaggingSong === songId) return;
@@ -23,9 +33,9 @@
 </script>
 
 <div class="list">
-	{#each songs as song, i (song.id)}
+	{#each rows as { song, rank } (song.id)}
 		<div class="row">
-			<span class="rank">{i + 1}</span>
+			<span class="rank">{rank}</span>
 
 			<AlbumArt src={song.album_art_url} alt={song.album_name ?? song.title} size={36} />
 
@@ -95,7 +105,7 @@
 		align-items: center;
 		gap: 10px;
 		padding: 9px 18px;
-		border-bottom: 1px dashed var(--muted);
+		border-bottom: 1px dashed var(--text-muted);
 		flex-shrink: 0;
 		user-select: none;
 	}
@@ -126,23 +136,23 @@
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
-		color: var(--muted);
+		color: var(--text-muted);
 		padding: 0;
 		transition: color 0.1s, background 0.1s;
 	}
-	.action-btn:hover { color: var(--ink); background: rgba(26,26,26,0.06); }
-	.action-btn.remove:hover { color: #c0392b; background: rgba(192,57,43,0.07); }
+	.action-btn:hover { color: var(--ink); background: var(--surface-hover); }
+	.action-btn.remove:hover { color: var(--danger); background: var(--danger-soft); }
 
-	.underrated-btn.active { color: #3b82f6; background: rgba(59,130,246,0.12); }
-	.overrated-btn.active { color: #ef4444; background: rgba(239,68,68,0.12); }
-	.unsure-btn.active { color: #f59e0b; background: rgba(245,158,11,0.12); }
+	.underrated-btn.active { color: var(--rating-under); background: var(--rating-under-soft); }
+	.overrated-btn.active { color: var(--rating-over); background: var(--rating-over-soft); }
+	.unsure-btn.active { color: var(--rating-unsure); background: var(--rating-unsure-soft); }
 
 	.flag-loading {
 		width: 66px; /* 3 × 22px buttons */
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: var(--muted);
+		color: var(--text-muted);
 	}
 
 	:global(.spin-sm) {
@@ -158,7 +168,7 @@
 		width: 22px;
 		text-align: right;
 		flex-shrink: 0;
-		color: var(--muted);
+		color: var(--text-muted);
 	}
 
 	.meta {
@@ -179,9 +189,9 @@
 	}
 
 	.artist {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 9.5px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.4px;
 		text-transform: uppercase;
 		white-space: nowrap;
@@ -190,9 +200,9 @@
 	}
 
 	.album {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 9px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.3px;
 		white-space: nowrap;
 		overflow: hidden;
@@ -217,9 +227,9 @@
 	}
 
 	.elo-label {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 8px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 1px;
 		text-transform: uppercase;
 		line-height: 1;
@@ -228,7 +238,7 @@
 	.matchup-count {
 		font-family: var(--font-mono);
 		font-size: 8px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.5px;
 		line-height: 1;
 		opacity: 0.6;

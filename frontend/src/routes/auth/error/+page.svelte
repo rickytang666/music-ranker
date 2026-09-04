@@ -26,9 +26,9 @@
 	}
 
 	.hint {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.3px;
 	}
 

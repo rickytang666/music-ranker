@@ -15,12 +15,51 @@
 		children: import('svelte').Snippet;
 	} = $props();
 
+	let modalEl = $state<HTMLElement | null>(null);
+
+	// aria-modal requires focus inside the dialog; restore it to the trigger on close
+	$effect(() => {
+		const trigger = document.activeElement as HTMLElement | null;
+		const focusTimer = setTimeout(() => {
+			// a child that manages its own focus, like a typed confirm, wins
+			if (modalEl && !modalEl.contains(document.activeElement)) modalEl.focus();
+		}, 0);
+		return () => {
+			clearTimeout(focusTimer);
+			trigger?.focus?.();
+		};
+	});
+
+	function focusables(): HTMLElement[] {
+		if (!modalEl) return [];
+		return [
+			...modalEl.querySelectorAll<HTMLElement>(
+				'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+			)
+		].filter((el) => el.offsetParent !== null);
+	}
+
 	function onOverlayClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) onClose();
 	}
 
 	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') onClose();
+		if (e.key === 'Escape') {
+			onClose();
+			return;
+		}
+		if (e.key !== 'Tab') return;
+		const focusable = focusables();
+		if (focusable.length === 0) return;
+		const first = focusable[0];
+		const last = focusable[focusable.length - 1];
+		if (e.shiftKey && document.activeElement === first) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && document.activeElement === last) {
+			e.preventDefault();
+			first.focus();
+		}
 	}
 </script>
 
@@ -29,7 +68,15 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="overlay" onclick={onOverlayClick}>
-	<div class="modal" role="dialog" aria-modal="true" style="width: {width}">
+	<div
+		class="modal"
+		role="dialog"
+		aria-modal="true"
+		aria-label={title}
+		tabindex="-1"
+		bind:this={modalEl}
+		style="width: {width}"
+	>
 		<header>
 			<div class="header-text">
 				<span class="modal-title">{title}</span>
@@ -49,7 +96,7 @@
 	.overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(26, 26, 26, 0.4);
+		background: var(--scrim);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -88,9 +135,9 @@
 	}
 
 	.modal-subtitle {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.3px;
 	}
 
@@ -108,7 +155,7 @@
 	}
 
 	@media (max-width: 640px) {
-		.overlay { align-items: flex-end; background: rgba(26, 26, 26, 0.5); }
+		.overlay { align-items: flex-end; background: var(--scrim-heavy); }
 		.modal {
 			width: 100% !important;
 			max-width: 100%;

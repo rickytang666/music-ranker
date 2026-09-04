@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import DangerConfirm from "$lib/components/DangerConfirm.svelte";
   import {
     IconChevronLeft,
     IconChevronRight,
@@ -99,15 +100,36 @@
     goto("/login");
   }
 
+  let pendingDelete = $state<Ranking | null>(null);
+
+  let accountName = $derived(auth.user?.display_name?.trim() || "your account");
+  // the avatar is only captured at sign-in, so initials are the normal case, not a fallback for errors
+  let initials = $derived(
+    accountName
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((word) => [...word][0] ?? "")
+      .join("")
+      .toUpperCase(),
+  );
+  let avatarFailed = $state(false);
+
+  // autofocus does not fire on nodes mounted after load, so both inputs focus via effects below
+  let renameInput = $state<HTMLInputElement | null>(null);
+  let newNameInput = $state<HTMLInputElement | null>(null);
+
+  $effect(() => {
+    renameInput?.focus();
+  });
+  $effect(() => {
+    newNameInput?.focus();
+  });
+
+  // errors propagate so the confirmation dialog can stay open and report them
   async function deleteRanking(ranking: Ranking) {
-    if (!confirm(`Delete "${ranking.name}"? This cannot be undone.`)) return;
-    try {
-      await api.delete(`/api/v1/rankings/${ranking.id}`);
-      rankings.remove(ranking.id);
-      if (activeId === ranking.id) goto("/");
-    } catch {
-      // silently ignore
-    }
+    await api.delete(`/api/v1/rankings/${ranking.id}`);
+    rankings.remove(ranking.id);
+    if (activeId === ranking.id) goto("/");
   }
 </script>
 
@@ -146,9 +168,8 @@
         </a>
       {:else if renamingId === ranking.id}
         <div class="tab-row rename-row">
-          <!-- svelte-ignore a11y_autofocus -->
           <input
-            autofocus
+            bind:this={renameInput}
             class="rename-input"
             bind:value={renameValue}
             onkeydown={(e) => {
@@ -191,7 +212,7 @@
             </button>
             <button
               class="tab-icon-btn danger"
-              onclick={() => deleteRanking(ranking)}
+              onclick={() => (pendingDelete = ranking)}
               title="Delete"
             >
               <IconTrash size={12} />
@@ -219,9 +240,8 @@
       </button>
     {:else if creating}
       <div class="new-ranking-form">
-        <!-- svelte-ignore a11y_autofocus -->
         <input
-          autofocus
+          bind:this={newNameInput}
           bind:value={newName}
           placeholder="Ranking name"
           onkeydown={(e) => {
@@ -248,13 +268,33 @@
         <IconPlus size={14} />
         New Ranking
       </button>
-      <button class="logout-btn" onclick={logout}>
-        <IconLogout size={14} />
-        Log out
-      </button>
+      <div class="account">
+        <div class="avatar" aria-hidden="true">
+          {#if auth.user?.image_url && !avatarFailed}
+            <img src={auth.user.image_url} alt="" onerror={() => (avatarFailed = true)} />
+          {:else}
+            <span class="initials">{initials}</span>
+          {/if}
+        </div>
+        <span class="account-name" title={accountName}>{accountName}</span>
+        <button class="logout-btn" onclick={logout} title="Log out" aria-label="Log out">
+          <IconLogout size={14} />
+        </button>
+      </div>
     {/if}
   </div>
 </aside>
+
+{#if pendingDelete}
+  <DangerConfirm
+    title="Delete this ranking?"
+    body={`"${pendingDelete.name}" and everything in it will be permanently deleted, including every song in the list and every comparison you have made. This cannot be undone.`}
+    confirmLabel="delete ranking"
+    confirmPhrase={pendingDelete.name}
+    onConfirm={() => deleteRanking(pendingDelete!)}
+    onClose={() => (pendingDelete = null)}
+  />
+{/if}
 
 <style>
   .sidebar {
@@ -305,11 +345,11 @@
   }
 
   .label {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 10px;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--text-muted);
   }
 
   .icon-btn {
@@ -338,6 +378,7 @@
     overflow-y: auto;
   }
 
+  /* icon colours live on the row so the active and inactive states cannot drift apart */
   .tab-row {
     display: flex;
     align-items: center;
@@ -346,22 +387,26 @@
     padding: 0 6px 0 11px;
     min-height: 40px;
     gap: 4px;
+
+    --icon: var(--text-muted);
+    --icon-hover: var(--ink);
+    --icon-hover-bg: var(--surface-hover);
+    --icon-danger: var(--danger);
+    --icon-sync: var(--spotify);
   }
   .tab-row.active {
     background: var(--ink);
     color: var(--paper);
+
+    --icon: var(--on-dark-soft);
+    --icon-hover: var(--on-dark-strong);
+    --icon-hover-bg: var(--on-dark-hover);
+    --icon-danger: var(--danger-bright);
+    --icon-sync: var(--spotify-bright);
   }
   .tab-row.active .tab-link {
     color: var(--paper);
   }
-  .tab-row.active .tab-icon-btn {
-    color: rgba(255, 255, 255, 0.45);
-  }
-  .tab-row.active .tab-icon-btn:hover {
-    color: rgba(255, 255, 255, 0.9);
-    background: none;
-  }
-
   .tab-link {
     flex: 1;
     font-family: var(--font-serif);
@@ -394,26 +439,24 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: rgba(26, 26, 26, 0.3);
+    color: var(--icon);
     flex-shrink: 0;
     padding: 0;
-    transition: color 0.1s;
+    transition: color 0.1s, background 0.1s;
   }
   .tab-icon-btn:hover {
-    color: var(--ink);
-    background: none;
+    color: var(--icon-hover);
+    background: var(--icon-hover-bg);
   }
   .tab-icon-btn.danger:hover {
-    color: #c0392b;
-    background: none;
+    color: var(--icon-danger);
   }
 
   .sync-dot {
     display: flex;
     align-items: center;
-    color: #1db954;
+    color: var(--icon-sync);
     flex-shrink: 0;
-    opacity: 0.8;
   }
   .sync-dot.error {
     color: var(--accent);
@@ -426,7 +469,7 @@
   .rename-input {
     flex: 1;
     border: none;
-    border-bottom: 1px solid var(--muted);
+    border-bottom: 1px solid var(--text-muted);
     background: none;
     font-family: var(--font-serif);
     font-size: 15px;
@@ -511,7 +554,7 @@
   }
   .new-ranking-form input {
     border: none;
-    border-bottom: 1px solid var(--muted);
+    border-bottom: 1px solid var(--text-muted);
     background: none;
     font-family: var(--font-serif);
     font-size: 15px;
@@ -526,27 +569,69 @@
     justify-content: flex-end;
   }
 
+  .account {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 4px 6px 6px;
+    min-width: 0;
+  }
+  .avatar {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 1px solid var(--line-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-hover);
+  }
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .initials {
+    font-family: var(--font-ui);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--text-muted);
+  }
+  /* min-width 0 here and on .account is what lets a long name truncate instead of widening the sidebar */
+  .account-name {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-serif);
+    font-size: 14px;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .logout-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    width: 100%;
+    flex-shrink: 0;
     border: none;
     border-radius: 6px;
-    padding: 8px 10px;
-    font-family: var(--font-serif);
-    font-size: 14px;
+    padding: 6px;
     background: none;
-    color: var(--muted);
+    color: var(--text-muted);
     cursor: pointer;
     transition:
       color 0.1s,
       background 0.1s;
   }
   .logout-btn:hover {
-    color: #c0392b;
-    background: rgba(192, 57, 43, 0.06);
+    color: var(--danger);
+    background: var(--danger-softer);
   }
 
   .glyph-logout {
@@ -558,14 +643,14 @@
     width: 36px;
     height: 36px;
     background: none;
-    color: var(--muted);
+    color: var(--text-muted);
     cursor: pointer;
     transition:
       color 0.1s,
       background 0.1s;
   }
   .glyph-logout:hover {
-    color: #c0392b;
-    background: rgba(192, 57, 43, 0.06);
+    color: var(--danger);
+    background: var(--danger-softer);
   }
 </style>

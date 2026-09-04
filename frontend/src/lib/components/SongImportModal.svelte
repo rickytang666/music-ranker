@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { IconSearch, IconLoader2 } from '@tabler/icons-svelte';
-	import { api } from '$lib/api';
+	import { api, describeError } from '$lib/api';
 	import type { BaseSong } from '$lib/types';
 	import ImportItem from './ImportItem.svelte';
 	import Modal from './Modal.svelte';
@@ -38,6 +38,21 @@
 	let phase = $state<Phase>('idle');
 	let query = $state('');
 	let errorMsg = $state('');
+	let errorRetryable = $state(false);
+	let retryAction: (() => void) | null = null;
+
+	// one place to turn a thrown value into a message, a console record and a retry
+	function fail(op: string, e: unknown, retry: (() => void) | null = null) {
+		console.error(`[song import] ${op} failed`, e);
+		const described = describeError(e, {
+			subject: 'spotify',
+			forbiddenHint: 'you may need to reconnect your account.'
+		});
+		errorMsg = described.message;
+		errorRetryable = described.retryable && retry !== null;
+		retryAction = retry;
+		phase = 'error';
+	}
 	let loadingMsg = $state('loading…');
 	let saving = $state(false);
 
@@ -50,6 +65,12 @@
 	let selectedTracks = $state(new Set<number>());
 
 	let searchTimer: ReturnType<typeof setTimeout>;
+	let searchInput = $state<HTMLInputElement | null>(null);
+
+	// autofocus does not fire on a node mounted after load, so focus it here
+	$effect(() => {
+		searchInput?.focus();
+	});
 
 	const placeholders: Record<Mode, string> = {
 		song: 'Search for a song…',
@@ -96,9 +117,8 @@
 				artistResults = r;
 				phase = r.length ? 'results' : 'no-results';
 			}
-		} catch {
-			errorMsg = 'search failed. check your connection.';
-			phase = 'error';
+		} catch (e) {
+			fail('search', e, () => doSearch(q));
 		}
 	}
 
@@ -137,9 +157,8 @@
 			albumResults = await api.get<AlbumResult[]>(`/api/v1/spotify/artists/${artistId}/albums`);
 			selectedItems = new Set(albumResults.map((a) => a.id));
 			phase = albumResults.length ? 'discography' : 'no-results';
-		} catch {
-			errorMsg = 'failed to load discography. try again.';
-			phase = 'error';
+		} catch (e) {
+			fail('load discography', e, () => loadDiscography(artistId));
 		}
 	}
 
@@ -165,9 +184,8 @@
 			});
 			selectedTracks = new Set(tracks.map((t) => t.id));
 			phase = 'tracks';
-		} catch {
-			errorMsg = 'failed to load tracks. try again.';
-			phase = 'error';
+		} catch (e) {
+			fail('load tracks', e, () => loadTracks());
 		}
 	}
 
@@ -191,9 +209,9 @@
 			await api.post(`/api/v1/rankings/${rankingId}/songs`, { song_ids: ids });
 			onAdded();
 			onClose();
-		} catch {
-			errorMsg = 'failed to add songs. try again.';
+		} catch (e) {
 			saving = false;
+			fail('add songs', e, () => addSongs());
 		}
 	}
 
@@ -218,13 +236,12 @@
 
 		<div class="search-row">
 			<IconSearch size={16} class="search-icon" />
-			<!-- svelte-ignore a11y_autofocus -->
 			<input
 				type="search"
 				placeholder={placeholders[mode]}
+				bind:this={searchInput}
 				bind:value={query}
 				oninput={onInput}
-				autofocus
 			/>
 		</div>
 
@@ -329,7 +346,12 @@
 				<p class="hint">no results for "{query}"</p>
 
 			{:else if phase === 'error'}
-				<p class="hint error">{errorMsg}</p>
+				<div class="error-state">
+					<p class="hint error">{errorMsg}</p>
+					{#if errorRetryable}
+							<button class="retry" onclick={() => retryAction?.()}>retry</button>
+					{/if}
+				</div>
 			{/if}
 		</div>
 
@@ -362,7 +384,7 @@
 
 	.mode-tab {
 		padding: 9px 20px;
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
 		letter-spacing: 0.8px;
 		text-transform: uppercase;
@@ -370,7 +392,7 @@
 		border-bottom: 2px solid transparent;
 		background: none;
 		cursor: pointer;
-		color: var(--muted);
+		color: var(--text-muted);
 		margin-bottom: -1px;
 	}
 	.mode-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
@@ -382,7 +404,7 @@
 		padding: 12px 20px;
 		border-bottom: var(--border);
 		flex-shrink: 0;
-		color: var(--muted);
+		color: var(--text-muted);
 	}
 
 	.search-row input {
@@ -398,14 +420,38 @@
 	.content { flex: 1; overflow-y: auto; padding: 12px 0; }
 
 	.hint {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 		text-align: center;
 		padding: 40px 20px;
 		letter-spacing: 0.3px;
 	}
 	.hint.error { color: var(--accent); }
+	/* the button is inline-block; without a centring parent it sat flush left
+	   while the message above it was centred */
+	.error-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+		padding: 40px 20px;
+	}
+	.error-state .hint {
+		padding: 0;
+	}
+
+	.retry {
+		font-family: var(--font-ui);
+		font-size: 12px;
+		color: var(--ink);
+		background: none;
+		border: 1px solid var(--ink);
+		border-radius: 6px;
+		padding: 6px 14px;
+		cursor: pointer;
+	}
+	.retry:hover { background: var(--surface-hover); }
 
 	.spinner-row {
 		display: flex;
@@ -413,9 +459,9 @@
 		justify-content: center;
 		gap: 10px;
 		padding: 40px 20px;
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 	}
 
 	:global(.spin) { animation: spin 1s linear infinite; }
@@ -434,9 +480,9 @@
 	.text-btn {
 		background: none;
 		border: none;
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 		cursor: pointer;
 		letter-spacing: 0.3px;
 		padding: 0;
@@ -453,9 +499,9 @@
 	}
 
 	.count {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.3px;
 	}
 

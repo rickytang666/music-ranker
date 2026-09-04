@@ -7,10 +7,10 @@
     IconShare,
     IconCheck,
     IconRotate,
+    IconDots,
     IconArrowLeft,
     IconArrowRight,
     IconCornerDownLeft,
-    IconUpload,
   } from "@tabler/icons-svelte";
   import { api, ApiError } from "$lib/api";
   import { rankings } from "$lib/stores/rankings.svelte";
@@ -18,10 +18,13 @@
   import type { BaseSong, RankedSong } from "$lib/types";
   import SongCard from "$lib/components/SongCard.svelte";
   import SongImportModal from "$lib/components/SongImportModal.svelte";
+  import SpotifyLogo from "$lib/components/SpotifyLogo.svelte";
   import SpotifyExportModal from "$lib/components/SpotifyExportModal.svelte";
   import RankedList from "$lib/components/RankedList.svelte";
   import AlbumList from "$lib/components/AlbumList.svelte";
+  import { albumKey, albumLabel } from "$lib/albums";
   import ConfidenceSlider from "$lib/components/ConfidenceSlider.svelte";
+  import DangerConfirm from "$lib/components/DangerConfirm.svelte";
 
   interface Matchup {
     song_a: BaseSong;
@@ -52,6 +55,25 @@
   let copyFeedback = $state(false);
   let mobileTab = $state<"match" | "ranking">("match");
   let panelView = $state<"songs" | "albums">("songs");
+  let albumFilter = $state<string | null>(null);
+
+  // a filter from one ranking is meaningless in another
+  $effect(() => {
+    void rankingId;
+    untrack(() => (albumFilter = null));
+  });
+
+  // never gate the chip on a match: removing the last song of a filtered album
+  // would hide the clear button and strand the panel with no way out
+  let albumFilterLabel = $derived.by(() => {
+    if (albumFilter === null) return null;
+    const songInAlbum = rankedSongs.find((s) => albumKey(s) === albumFilter);
+    return songInAlbum ? albumLabel(songInAlbum) : "this album";
+  });
+
+  let filterMatchesNothing = $derived(
+    albumFilter !== null && !rankedSongs.some((s) => albumKey(s) === albumFilter),
+  );
 
   async function fetchExportText(): Promise<string> {
     return api.getText(`/api/v1/rankings/${rankingId}/export`);
@@ -205,38 +227,46 @@
     await Promise.all([loadNext(), loadSongs()]);
   }
 
+  let dangerMenuOpen = $state(false);
+  let resetConfirmOpen = $state(false);
+  let pendingRemoval = $state<RankedSong | null>(null);
+
+  // each matchup increments the count on both of its songs
+  let matchupTotal = $derived(
+    Math.round(rankedSongs.reduce((n, s) => n + s.matchup_count, 0) / 2),
+  );
+
   async function resetRanking() {
-    if (
-      !confirm("Reset all ELO scores and match history? This cannot be undone.")
-    )
-      return;
     shownPairs = [];
     await api.post(`/api/v1/rankings/${rankingId}/reset`, {});
     await Promise.all([loadNext(), loadSongs()]);
   }
 
+  // errors propagate so the confirmation dialog can stay open and report them
   async function removeSong(songId: number) {
-    const song = rankedSongs.find((s) => s.id === songId);
-    if (
-      !confirm(`Remove "${song?.title ?? "this song"}"? This cannot be undone.`)
-    )
-      return;
-    try {
-      await api.delete(`/api/v1/rankings/${rankingId}/songs/${songId}`);
-      rankedSongs = rankedSongs.filter((s) => s.id !== songId);
-      loadNext();
-    } catch {
-      // non-critical
-    }
+    await api.delete(`/api/v1/rankings/${rankingId}/songs/${songId}`);
+    rankedSongs = rankedSongs.filter((s) => s.id !== songId);
+    loadNext();
   }
 
+  // every overlay must be listed: window.confirm used to block these keystrokes,
+  // in-page dialogs do not, and a stray Enter would record a real matchup behind them
+  let overlayOpen = $derived(
+    importOpen ||
+      exportOpen ||
+      spotifyExportOpen ||
+      dangerMenuOpen ||
+      resetConfirmOpen ||
+      pendingRemoval !== null,
+  );
+
   function onKeydown(e: KeyboardEvent) {
+    if (overlayOpen) return;
     if ((e.metaKey || e.ctrlKey) && e.key === "k") {
       e.preventDefault();
       importOpen = true;
       return;
     }
-    if (importOpen || exportOpen) return;
     const tag = document.activeElement?.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA") return;
     if (!matchup || matchupPhase !== "ready") return;
@@ -406,7 +436,7 @@
         >
       </div>
       {#if rankedSongs.length > 0}
-        <span class="song-count">{rankedSongs.length} songs · sorted</span>
+        <span class="song-count">{rankedSongs.length} {rankedSongs.length === 1 ? "song" : "songs"}</span>
       {/if}
     </div>
     <div class="panel-actions">
@@ -446,11 +476,34 @@
           onclick={() => (spotifyExportOpen = true)}
           title="Export to Spotify"
         >
-          <IconUpload size={14} />
+          <SpotifyLogo size={14} />
         </button>
-        <button class="icon-btn" onclick={resetRanking} title="Reset ranking">
-          <IconRotate size={14} />
-        </button>
+        <div class="danger-wrap">
+          <button
+            class="icon-btn danger-trigger"
+            onclick={() => (dangerMenuOpen = !dangerMenuOpen)}
+            title="More actions"
+          >
+            <IconDots size={14} />
+          </button>
+          {#if dangerMenuOpen}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div class="menu-scrim" onclick={() => (dangerMenuOpen = false)}></div>
+            <div class="danger-menu">
+              <button
+                class="danger-item"
+                onclick={() => {
+                  dangerMenuOpen = false;
+                  resetConfirmOpen = true;
+                }}
+              >
+                <IconRotate size={14} />
+                Reset ranking
+              </button>
+            </div>
+          {/if}
+        </div>
       {/if}
       <button
         class="icon-btn"
@@ -467,16 +520,61 @@
       <p>add songs to start ranking</p>
     </div>
   {:else if panelView === "songs"}
+    {#if albumFilterLabel}
+      <div class="filter-bar">
+        <span class="filter-chip">
+          {albumFilterLabel}
+          <button
+            class="filter-clear"
+            onclick={() => (albumFilter = null)}
+            aria-label="Clear album filter">clear</button
+          >
+        </span>
+      </div>
+    {/if}
+    {#if filterMatchesNothing}
+      <div class="empty-list">
+        <p>no songs left in this album</p>
+      </div>
+    {/if}
     <RankedList
       songs={rankedSongs}
-      onRemove={removeSong}
+      onRemove={(id) => (pendingRemoval = rankedSongs.find((s) => s.id === id) ?? null)}
       onFlag={flag}
       {flaggingSong}
+      {albumFilter}
     />
   {:else}
-    <AlbumList songs={rankedSongs} />
+    <AlbumList
+      songs={rankedSongs}
+      onSelect={(key) => {
+        albumFilter = key;
+        panelView = "songs";
+      }}
+    />
   {/if}
 </aside>
+
+{#if resetConfirmOpen && ranking}
+  <DangerConfirm
+    title="Reset this ranking?"
+    body={`This permanently erases ${matchupTotal.toLocaleString()} ${matchupTotal === 1 ? "matchup" : "matchups"} across ${rankedSongs.length} ${rankedSongs.length === 1 ? "song" : "songs"} and returns every score to its starting value. The songs stay, your comparisons do not. This cannot be undone.`}
+    confirmLabel="reset ranking"
+    confirmPhrase={ranking.name}
+    onConfirm={resetRanking}
+    onClose={() => (resetConfirmOpen = false)}
+  />
+{/if}
+
+{#if pendingRemoval}
+  <DangerConfirm
+    title="Remove this song?"
+    body={`"${pendingRemoval.title}" will be removed from this ranking along with its score and ${pendingRemoval.matchup_count} ${pendingRemoval.matchup_count === 1 ? "comparison" : "comparisons"}. You can add it back later, but its history will not return.`}
+    confirmLabel="remove song"
+    onConfirm={() => removeSong(pendingRemoval!.id)}
+    onClose={() => (pendingRemoval = null)}
+  />
+{/if}
 
 {#if importOpen && ranking}
   <SongImportModal
@@ -540,11 +638,11 @@
   }
 
   .label {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 10px;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--text-muted);
   }
 
   .ranking-name {
@@ -553,13 +651,13 @@
   }
 
   .queue-badge {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 9.5px;
     letter-spacing: 0.8px;
     text-transform: uppercase;
-    color: #f59e0b;
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: var(--warning);
+    background: var(--warning-soft);
+    border: 1px solid var(--warning-edge);
     border-radius: 20px;
     padding: 3px 10px;
   }
@@ -587,7 +685,7 @@
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    color: var(--muted);
+    color: var(--text-muted);
   }
 
   .state-title {
@@ -597,9 +695,9 @@
   }
 
   .state-sub {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
-    color: var(--muted);
+    color: var(--text-muted);
     letter-spacing: 0.3px;
   }
 
@@ -608,7 +706,7 @@
     border: var(--border);
     border-radius: 6px;
     padding: 8px 18px;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
     letter-spacing: 0.3px;
     cursor: pointer;
@@ -638,7 +736,7 @@
     gap: 6px;
     font-family: var(--font-mono);
     font-size: 10px;
-    color: var(--muted);
+    color: var(--text-muted);
     letter-spacing: 0.3px;
   }
 
@@ -649,7 +747,7 @@
     min-width: 24px;
     height: 22px;
     padding: 0 5px;
-    border: 1.5px solid rgba(26, 26, 26, 0.3);
+    border: 1.5px solid var(--line-strong);
     border-bottom-width: 3px;
     border-radius: 4px;
     font-family: var(--font-mono);
@@ -675,7 +773,7 @@
     border: var(--border);
     border-radius: 6px;
     background: none;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 12px;
     color: var(--ink);
     cursor: pointer;
@@ -686,7 +784,7 @@
   }
 
   .mob-btn:active {
-    background: rgba(26, 26, 26, 0.06);
+    background: var(--surface-hover);
   }
 
   .mob-confirm-btn {
@@ -696,13 +794,13 @@
     border-radius: 6px;
     background: var(--ink);
     color: var(--paper);
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 12px;
     cursor: pointer;
   }
 
   .mob-confirm-btn:active {
-    background: #333;
+    background: var(--ink-pressed);
   }
 
   .right-panel {
@@ -732,7 +830,7 @@
   .view-toggle {
     display: flex;
     gap: 2px;
-    background: rgba(26, 26, 26, 0.06);
+    background: var(--surface-hover);
     border-radius: 6px;
     padding: 2px;
   }
@@ -742,12 +840,12 @@
     border: none;
     border-radius: 4px;
     padding: 4px 10px;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 10px;
     letter-spacing: 0.5px;
     text-transform: uppercase;
     cursor: pointer;
-    color: var(--muted);
+    color: var(--text-muted);
     transition:
       background 0.1s,
       color 0.1s;
@@ -755,13 +853,14 @@
   .view-btn.active {
     background: var(--paper);
     color: var(--ink);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 2px var(--shadow);
   }
 
   .song-count {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 10px;
-    color: var(--muted);
+    white-space: nowrap;
+    color: var(--text-muted);
     letter-spacing: 0.5px;
     text-transform: uppercase;
   }
@@ -790,12 +889,12 @@
     color: var(--paper);
   }
   .spotify-btn {
-    color: #1db954;
-    border-color: #1db954;
+    color: var(--spotify);
+    border-color: var(--spotify);
   }
   .spotify-btn:hover {
-    background: #1db954;
-    color: #fff;
+    background: var(--spotify);
+    color: var(--paper);
   }
 
   .export-wrap {
@@ -808,6 +907,51 @@
     z-index: 9;
   }
 
+  /* reset sits behind its own trigger so it is never one misclick from add-songs or export */
+  .danger-wrap {
+    position: relative;
+    display: flex;
+  }
+  .menu-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+  }
+  .danger-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    background: var(--paper);
+    border: 1.5px solid var(--danger);
+    border-radius: 6px;
+    padding: 4px;
+    min-width: 170px;
+    box-shadow: 3px 3px 0 0 var(--danger-edge);
+    z-index: 10;
+  }
+  .danger-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: var(--font-serif);
+    font-size: 14px;
+    color: var(--danger);
+    cursor: pointer;
+  }
+  .danger-item:hover {
+    background: var(--danger-soft);
+  }
+  .danger-trigger:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+
   .export-menu {
     position: absolute;
     right: 0;
@@ -817,7 +961,7 @@
     border-radius: 6px;
     padding: 4px;
     min-width: 160px;
-    box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.06);
+    box-shadow: 3px 3px 0 0 var(--shadow-soft);
     z-index: 10;
   }
 
@@ -835,7 +979,52 @@
     cursor: pointer;
   }
   .export-item:hover {
-    background: rgba(26, 26, 26, 0.06);
+    background: var(--surface-hover);
+  }
+
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    flex-shrink: 0;
+  }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    min-width: 0;
+    padding: 4px 6px 4px 10px;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* padding sized so the tap target clears the 24px WCAG 2.5.8 minimum */
+  .filter-clear {
+    flex-shrink: 0;
+    border: none;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 999px;
+    padding: 0 10px;
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    font-family: var(--font-ui);
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+  }
+  .filter-clear:hover {
+    background: var(--danger);
   }
 
   .empty-list {
@@ -843,12 +1032,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1.5px dashed var(--muted);
+    border: 1.5px dashed var(--text-muted);
     border-radius: 6px;
     margin: 16px;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
-    color: var(--muted);
+    color: var(--text-muted);
     letter-spacing: 0.3px;
     text-align: center;
     padding: 24px;
@@ -906,7 +1095,7 @@
     .mobile-tab {
       flex: 1;
       padding: 10px;
-      font-family: var(--font-mono);
+      font-family: var(--font-ui);
       font-size: 11px;
       letter-spacing: 0.8px;
       text-transform: uppercase;
@@ -914,7 +1103,7 @@
       border-bottom: 2px solid transparent;
       background: none;
       cursor: pointer;
-      color: var(--muted);
+      color: var(--text-muted);
       margin-bottom: -1px;
     }
     .mobile-tab.active {

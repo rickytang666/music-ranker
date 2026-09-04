@@ -7,7 +7,8 @@ class AuthController < ApplicationController
       access_token: auth.credentials.token,
       refresh_token: auth.credentials.refresh_token.presence || user.refresh_token,
       token_expires_at: Time.at(auth.credentials.expires_at),
-      spotify_market: auth.extra.raw_info["country"]
+      spotify_market: auth.extra.raw_info["country"],
+      image_url: auth.info.image.presence || user.image_url
     )
     # no refresh token fails silently later, once the access token expires
     Rails.logger.warn "auth callback: user #{user.id} has no refresh token" if user.refresh_token.blank?

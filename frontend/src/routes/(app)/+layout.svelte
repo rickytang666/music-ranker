@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { api } from '$lib/api';
 	import { rankings } from '$lib/stores/rankings.svelte';
+	import { auth } from '$lib/stores/auth.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { IconMenu2 } from '@tabler/icons-svelte';
 
@@ -28,6 +29,12 @@
 	});
 
 	onMount(async () => {
+		// a 401 here redirects via the api layer, so it needs no special case
+		api
+			.get<Parameters<typeof auth.setUser>[0]>('/api/v1/auth/me')
+			.then(auth.setUser)
+			.catch((e) => console.error('[account] failed to load current user', e));
+
 		try {
 			const fetchedRankings = await api.get<typeof rankings.list>('/api/v1/rankings');
 			rankings.set(fetchedRankings);
@@ -52,7 +59,7 @@
 			<button class="hamburger" onclick={() => drawerOpen = !drawerOpen}>
 				<IconMenu2 size={20} />
 			</button>
-			<span class="app-title">music ranker</span>
+			<a class="app-title" href="/">music ranker</a>
 		</div>
 		<div class="page-content">
 			{@render children()}
@@ -104,11 +111,13 @@
 	.app-title {
 		font-family: var(--font-serif);
 		font-size: 18px;
+		color: var(--ink);
+		text-decoration: none;
 	}
 	.drawer-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(26, 26, 26, 0.4);
+		background: var(--scrim);
 		z-index: 199;
 	}
 	@media (max-width: 1199px) {

@@ -40,8 +40,8 @@
 		text-align: left;
 		color: var(--ink);
 	}
-	.item-row:hover { background: rgba(26, 26, 26, 0.04); }
-	.item-row.selected { background: rgba(26, 26, 26, 0.06); }
+	.item-row:hover { background: var(--wash); }
+	.item-row.selected { background: var(--surface-hover); }
 
 	.item-info {
 		flex: 1;
@@ -60,9 +60,9 @@
 	}
 
 	.item-sub {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 10px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.3px;
 		white-space: nowrap;
 		overflow: hidden;
@@ -70,9 +70,9 @@
 	}
 
 	.item-nav {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 14px;
-		color: var(--muted);
+		color: var(--text-muted);
 		flex-shrink: 0;
 	}
 

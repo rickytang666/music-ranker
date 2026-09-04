@@ -13,13 +13,60 @@
 		/>
 		<style>
 			:root {
+				/* base surfaces and text */
 				--ink: #1a1a1a;
 				--paper: #fafaf7;
-				--muted: #999;
-				--accent: #e4572e;
+				--ink-pressed: #333333;
+				--text-muted: #737373;
+				--on-dark-soft: rgba(255, 255, 255, 0.45);
+				--on-dark-strong: rgba(255, 255, 255, 0.9);
+				--on-dark-hover: rgba(255, 255, 255, 0.14);
+
+				/* semantic colour, paired: default reads on paper, -bright reads on the dark row */
+				--accent: #ce431b;
+				--danger: #c0392b;
+				--danger-bright: #dc6f63;
+				--danger-deep: #a63125;
+				--success: #2f815a;
+				--warning: #a06707;
+				--info: #176bf4;
+				--spotify: #15853c;
+				--spotify-bright: #1db954;
+
+				/* rating states, named by role rather than hue */
+				--rating-under: var(--info);
+				--rating-over: #e51414;
+				--rating-unsure: var(--warning);
+				--rating-under-soft: rgba(23, 107, 244, 0.12);
+				--rating-over-soft: rgba(229, 20, 20, 0.12);
+				--rating-unsure-soft: rgba(160, 103, 7, 0.12);
+
+				/* tinted fills */
+				--danger-soft: rgba(192, 57, 43, 0.07);
+				--danger-softer: rgba(192, 57, 43, 0.06);
+				--danger-edge: rgba(192, 57, 43, 0.2);
+				--warning-soft: rgba(160, 103, 7, 0.1);
+				--warning-edge: rgba(160, 103, 7, 0.3);
+
+				/* neutral scale, all derived from ink */
+				--wash: rgba(26, 26, 26, 0.04);
+				--surface-hover: rgba(26, 26, 26, 0.06);
+				--surface-active: rgba(26, 26, 26, 0.12);
+				--line-soft: rgba(26, 26, 26, 0.15);
+				--line-strong: rgba(26, 26, 26, 0.3);
+				--scrim: rgba(26, 26, 26, 0.45);
+				--scrim-heavy: rgba(26, 26, 26, 0.5);
 				--border: 1.5px solid var(--ink);
+
+				/* elevation, kept separate from surfaces: shadow is not a background */
+				--shadow-soft: rgba(0, 0, 0, 0.06);
+				--shadow: rgba(0, 0, 0, 0.08);
+				--shadow-strong: rgba(0, 0, 0, 0.15);
+
+				/* type: serif for content, ui for labels, mono only where digits must align */
 				--font-serif: 'Source Serif 4', 'Noto Serif SC', serif;
-				--font-mono: 'JetBrains Mono', monospace;
+				--font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+				--font-mono: 'JetBrains Mono', ui-monospace, monospace;
 			}
 			*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 			html, body { height: 100%; background: var(--paper); color: var(--ink); }

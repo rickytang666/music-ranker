@@ -58,11 +58,11 @@
 		object-fit: cover;
 		border: var(--border);
 		border-radius: 4px;
-		box-shadow: 4px 4px 0 0 rgba(0, 0, 0, 0.08);
+		box-shadow: 4px 4px 0 0 var(--shadow);
 		display: block;
 	}
 	.art.placeholder {
-		background: repeating-linear-gradient(135deg, transparent 0 8px, rgba(0, 0, 0, 0.06) 8px 9px);
+		background: repeating-linear-gradient(135deg, transparent 0 8px, var(--shadow-soft) 8px 9px);
 	}
 
 	.meta {
@@ -85,9 +85,9 @@
 	}
 
 	.artist {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--text-muted);
 		letter-spacing: 0.5px;
 		text-transform: uppercase;
 	}
@@ -100,14 +100,14 @@
 		border: var(--border);
 		border-radius: 20px;
 		background: none;
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 10px;
 		letter-spacing: 0.5px;
 		color: var(--ink);
 		cursor: pointer;
 		transition: background 0.1s;
 	}
-	.flag-badge:hover { background: rgba(26,26,26,0.06); }
+	.flag-badge:hover { background: var(--surface-hover); }
 
 	@media (min-width: 769px) and (max-width: 1199px) {
 		.card { gap: 12px; }
