@@ -346,10 +346,12 @@
 				<p class="hint">no results for "{query}"</p>
 
 			{:else if phase === 'error'}
-				<p class="hint error">{errorMsg}</p>
-				{#if errorRetryable}
-					<button class="retry" onclick={() => retryAction?.()}>retry</button>
-				{/if}
+				<div class="error-state">
+					<p class="hint error">{errorMsg}</p>
+					{#if errorRetryable}
+							<button class="retry" onclick={() => retryAction?.()}>retry</button>
+					{/if}
+				</div>
 			{/if}
 		</div>
 
@@ -426,8 +428,20 @@
 		letter-spacing: 0.3px;
 	}
 	.hint.error { color: var(--accent); }
+	/* the button is inline-block; without a centring parent it sat flush left
+	   while the message above it was centred */
+	.error-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+		padding: 40px 20px;
+	}
+	.error-state .hint {
+		padding: 0;
+	}
+
 	.retry {
-		margin-top: 10px;
 		font-family: var(--font-ui);
 		font-size: 12px;
 		color: var(--ink);
