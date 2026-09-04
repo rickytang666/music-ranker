@@ -6,28 +6,30 @@ module Api
       RANKING_FIELDS = [:id, :name, :created_at, :spotify_playlist_id, :spotify_last_export_count, :spotify_sync_count, :spotify_sync_error].freeze
 
       def index
-        # counts aggregated in sql; per-record counts would be n+1 in the number of rankings
+        # counts aggregated in sql; per-record counts would be n+1 in the number of rankings.
+        # matchups is deliberately not joined: Matchup#purge_overflow caps that table at
+        # QUEUE_CAP rows, so counting it saturates. elo_service increments both songs of a
+        # matchup, so halving the ranking_songs total recovers the real figure and matches
+        # what the reset dialog shows.
         rankings = current_user.rankings
                                .left_joins(:ranking_songs)
-                               .left_joins(:matchups)
                                .select(
                                  "rankings.*",
-                                 "COUNT(DISTINCT ranking_songs.id) AS song_count",
-                                 "COUNT(DISTINCT matchups.id) AS matchup_count"
+                                 "COUNT(ranking_songs.id) AS song_count",
+                                 "ROUND(COALESCE(SUM(ranking_songs.matchup_count), 0) / 2.0) AS matchup_count"
                                )
                                .group("rankings.id")
                                .order(created_at: :desc)
 
         render json: rankings.map { |ranking|
-          ranking.as_json(only: RANKING_FIELDS)
-                 .merge("song_count" => ranking.song_count, "matchup_count" => ranking.matchup_count)
+          serialize(ranking, ranking.song_count, ranking.matchup_count)
         }
       end
 
       def create
         ranking = current_user.rankings.build(ranking_params)
         if ranking.save
-          render json: ranking.as_json(only: RANKING_FIELDS), status: :created
+          render json: serialize(ranking, *counts_for(ranking)), status: :created
         else
           render json: { errors: ranking.errors.full_messages }, status: :unprocessable_entity
         end
@@ -35,7 +37,7 @@ module Api
 
       def update
         if @ranking.update(ranking_params)
-          render json: @ranking.as_json(only: RANKING_FIELDS)
+          render json: serialize(@ranking, *counts_for(@ranking))
         else
           render json: { errors: @ranking.errors.full_messages }, status: :unprocessable_entity
         end
@@ -53,6 +55,17 @@ module Api
       end
 
       private
+
+      # every response carrying a ranking includes counts; the client store treats them
+      # as required and replaces records wholesale on update
+      def serialize(ranking, song_count, matchup_count)
+        ranking.as_json(only: RANKING_FIELDS)
+               .merge("song_count" => song_count.to_i, "matchup_count" => matchup_count.to_i)
+      end
+
+      def counts_for(ranking)
+        [ranking.ranking_songs.count, (ranking.ranking_songs.sum(:matchup_count) / 2.0).round]
+      end
 
       def set_ranking
         @ranking = current_user.rankings.find(params[:id])
